@@ -107,17 +107,25 @@ st.markdown("""
         .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
+
+        /* 🔥 UPDATED APPLY BUTTON STYLE */
         .apply-button {
-            background-color: #8B5CF6;
-            color: #bbb;
+            background-color: #ff4b4b; /* Streamlit-like orangish-red */
+            color: white !important;   /* Keep text/URL white */
             padding: 10px 20px;
-            border-radius: 10px;
+            border-radius: 12px;
             font-weight: bold;
             text-decoration: none;
             display: inline-block;
             margin-top: 10px;
+            box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
+            transition: all 0.3s ease;
         }
-        .apply-button:hover { background-color: #2563EB; }
+        .apply-button:hover {
+            background-color: #e63b3b; /* Slightly darker on hover */
+            box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
+            transform: scale(1.05);
+        }
     </style>
 """, unsafe_allow_html=True)
 
