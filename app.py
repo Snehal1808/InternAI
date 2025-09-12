@@ -236,7 +236,7 @@ if predict_button:
                 apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
 
             # 🔹 Badge only for top internship
-            top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
+            top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
 
             # 🔹 Progress bar color
             bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
