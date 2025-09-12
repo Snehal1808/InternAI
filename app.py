@@ -7,7 +7,7 @@ from tensorflow.keras.models import load_model
 # ----------------------------
 # Load model, scaler, and data
 # ----------------------------
-model = load_model("trained_model.keras")
+model = load_model("internship_model.keras")
 scaler = joblib.load("scaler.pkl")
 data = pd.read_csv("internship_data.csv")
 
