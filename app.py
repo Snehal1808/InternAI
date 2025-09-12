@@ -109,7 +109,7 @@ st.markdown("""
         .perk-badge { background-color: #8B5CF6; }
         .apply-button {
             background-color: #8B5CF6;
-            color: #e0e0e0;
+            color: #bbb;
             padding: 10px 20px;
             border-radius: 10px;
             font-weight: bold;
