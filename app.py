@@ -124,9 +124,12 @@ def load_data():
     df["Duration"] = df["Duration"].apply(parse_duration)
     df["Stipend"] = df["Stipend"].apply(parse_stipend)
     df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
-    return df
 
-data = load_data()
+    # ✅ Add default Education column (Graduation)
+    if "Education" not in df.columns:
+        df["Education"] = "Graduation"
+
+    return df
 
 # ------------------- SIDEBAR -------------------
 st.sidebar.header("🧑 Candidate Profile")
