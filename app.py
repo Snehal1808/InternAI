@@ -16,7 +16,7 @@ supported_languages = {
 
 PERKS_BENEFITS = [
     "Certificate", "Letter of Recommendation", "Flexible Work Hours",
-    "5 Days a Week", "Job Offer", "Informal Dress Code"
+    "5 Days a Week", "Job Offer", "Informal Dress Code", "Free snacks & beverages"
 ]
 
 # ------------------- CLEANING FUNCTIONS -------------------
