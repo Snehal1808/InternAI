@@ -78,37 +78,84 @@ def filter_internships(df, profile):
 # ------------------- STREAMLIT CONFIG -------------------
 st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
 
+# Custom CSS (Dark theme only)
 st.markdown("""
     <style>
         body { background-color: #0e1117; color: #e0e0e0; }
         .stApp { background-color: #0e1117; }
+        .main-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #ff4b1f, #ff9068);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        .sub-title {
+            text-align: center;
+            color: #bbb;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+        }
         .internship-card {
             padding: 20px;
             border-radius: 16px;
             background: #161a23;
+            color: #ffffff;
             margin-bottom: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
-        .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
-        .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
-        .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
-        .perk-badge { background-color: #8B5CF6; }
-        .apply-button {
+        .internship-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+        }
+        .top-match {
+            border: 2px solid #FFD700;
+            box-shadow: 0 0 20px #FFD700;
+        }
+        .progress-bar-bg {
+            background-color: #334155;
+            border-radius: 10px;
+            margin-top: 10px;
+            height: 18px;
+            overflow: hidden;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin: 2px;
+            font-size: 12px;
             background-color: #3B82F6;
             color: white;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: bold;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 10px;
         }
-        .apply-button:hover { background-color: #2563EB; }
+        .perk-badge {
+            background-color: #8B5CF6;
+        }
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+        .tooltip:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: #333;
+            color: #fff;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            z-index: 999;
+        }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</p>", unsafe_allow_html=True)
+st.markdown("<h1 class='main-title'>InternAI</h1>", unsafe_allow_html=True)
+st.markdown("<h2 class='main-title'>Find Your Perfect Internship Match</h2>", unsafe_allow_html=True)
+st.markdown("<p class='sub-title'>Our advanced AI analyzes your skills, interests, and preferences to recommend the most suitable internship opportunities just for you.</p>", unsafe_allow_html=True)
 
 # ------------------- LOAD DATA -------------------
 @st.cache_data
