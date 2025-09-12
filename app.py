@@ -202,7 +202,12 @@ if predict_button:
 
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                    apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
+                    apply_button_html = f'''
+                    <div style="text-align:center; margin-top:10px;">
+                        <a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>
+                    </div>
+                    '''
+
 
                 col.markdown(f"""
                 <div class="internship-card {highlight_class}">
