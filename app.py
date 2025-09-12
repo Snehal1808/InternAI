@@ -6,8 +6,8 @@ import re
 import difflib
 import joblib
 import tensorflow as tf
-import time
 from deep_translator import GoogleTranslator
+import io
 
 # ------------------- TRANSLATION SETUP -------------------
 supported_languages = {
@@ -128,6 +128,7 @@ st.markdown("""
             font-size: 12px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.4);
         }
+        .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
         .apply-button {
@@ -147,6 +148,7 @@ st.markdown("""
             box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
             transform: scale(1.05);
         }
+        .apply-btn-container { text-align: center; margin-top: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -199,11 +201,11 @@ if predict_button:
     if filtered_data.empty:
         st.warning(t("😔 No matching internships found! Try changing filters."))
     else:
-        # Encode + Scale Features
         try:
             filtered_data["Location_enc"] = le_location.transform(filtered_data["Location"])
         except:
             filtered_data["Location_enc"] = 0
+
         try:
             filtered_data["Company_enc"] = le_company.transform(filtered_data["Company Name"])
         except:
@@ -219,20 +221,19 @@ if predict_button:
         max_score = top_internships["Score"].max()
 
         st.subheader(t("🏆 Top Internship Recommendations"))
-        cols = st.columns(2)
 
+        cols = st.columns(2)
         for i, (_, row) in enumerate(top_internships.iterrows()):
+            score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
             col = cols[i % 2]
 
-            # Apply button
             apply_button_html = ""
             if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                 apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
 
-            # Top badge
             top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
+            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
 
-            # Internship Card
             html_card = f"""
             <div class="internship-card {'top-match' if i == 0 else ''}">
             {top_badge_html}
@@ -243,21 +244,27 @@ if predict_button:
             <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
             <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
             <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
+            <div class="progress-bar-bg">
+                <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
+                {score_percentage}% {t('Match')}
+                </div>
+            </div>
             {apply_button_html}
             </div>
             """
             col.markdown(html_card, unsafe_allow_html=True)
 
-            # Animated Progress Bar
-            score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
-            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
-            progress_text = col.empty()
-            progress_bar = col.progress(0)
+        # ------------------- CSV DOWNLOAD -------------------
+        csv_buffer = io.StringIO()
+        top_internships.to_csv(csv_buffer, index=False)
+        csv_data = csv_buffer.getvalue()
 
-            for pct in range(score_percentage + 1):
-                progress_bar.progress(pct)
-                progress_text.markdown(f"<p style='text-align:center; color:{bar_color}; font-weight:bold;'>{pct}% {t('Match')}</p>", unsafe_allow_html=True)
-                time.sleep(0.01)
+        st.download_button(
+            label=t("💾 Download Top Internships as CSV"),
+            data=csv_data,
+            file_name="top_internships.csv",
+            mime="text/csv"
+        )
 
 else:
     st.info(t("👈 Fill in your preferences and click **Get AI Recommendations** to see results."))
