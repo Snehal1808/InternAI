@@ -1,3 +1,53 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import io
+import joblib
+import tensorflow as tf
+from deep_translator import GoogleTranslator
+
+# ------------------- TRANSLATION SETUP -------------------
+supported_languages = {
+    "English": "en", "Assamese": "as", "Bengali": "bn", "Gujarati": "gu",
+    "Hindi": "hi", "Kannada": "kn", "Malayalam": "ml", "Marathi": "mr",
+    "Odia": "or", "Punjabi": "pa", "Tamil": "ta", "Telugu": "te", "Urdu": "ur"
+}
+
+# Load your data and models
+data = pd.read_csv("internships.csv")  # <-- replace with your dataset path
+model = tf.keras.models.load_model("model.h5")
+scaler = joblib.load("scaler.pkl")
+le_location = joblib.load("le_location.pkl")
+le_company = joblib.load("le_company.pkl")
+
+# ------------------- HELPERS -------------------
+def filter_internships(df, profile):
+    """Filter internships based on candidate profile"""
+    filtered = df.copy()
+
+    # Education filter (simple contains check)
+    if profile["education"]:
+        filtered = filtered[filtered["Education"].str.contains(profile["education"], na=False)]
+
+    # Skills filter
+    if profile["skills"]:
+        filtered = filtered[filtered["Skills"].apply(lambda x: any(skill in str(x) for skill in profile["skills"]))]
+
+    # Location filter
+    if profile["location"]:
+        filtered = filtered[filtered["Location"].apply(lambda x: any(loc in str(x) for loc in profile["location"]))]
+
+    return filtered
+
+# Translation wrapper
+def t(text):
+    if target_lang == "en":
+        return text
+    try:
+        return GoogleTranslator(source="auto", target=target_lang).translate(text)
+    except:
+        return text
+
 # ------------------- SIDEBAR -------------------
 st.sidebar.markdown(
     """
@@ -13,14 +63,6 @@ st.sidebar.markdown("<div class='sidebar-title'>🧑 Candidate Profile</div>", u
 
 selected_language = st.sidebar.selectbox("🌐 Language", list(supported_languages.keys()), index=0)
 target_lang = supported_languages[selected_language]
-
-def t(text):
-    if target_lang == "en":
-        return text
-    try:
-        return GoogleTranslator(source='auto', target=target_lang).translate(text)
-    except:
-        return text
 
 with st.sidebar:
     with st.container():
@@ -43,7 +85,6 @@ with st.sidebar:
         st.markdown("</div>", unsafe_allow_html=True)
 
         predict_button = st.button(t("🔮 Get AI Recommendations"), use_container_width=True)
-
 
 # ------------------- PREDICTIONS -------------------
 if predict_button:
@@ -68,30 +109,86 @@ if predict_button:
         X_scaled = scaler.transform(X)
         filtered_data["Score"] = model.predict(X_scaled).flatten()
 
-        # Show only 6 internships max
-        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(6)
-        max_score = top_internships["Score"].max()
+        # Pagination state
+        if "page" not in st.session_state:
+            st.session_state.page = 0
+
+        per_page = 6
+        start = st.session_state.page * per_page
+        end = start + per_page
+
+        top_internships = filtered_data.sort_values(by="Score", ascending=False).iloc[start:end]
+        max_score = filtered_data["Score"].max()
 
         st.subheader(t("🏆 Your Matches"))
 
-        cols = st.columns(2)  # grid layout like screenshot
+        # --- Custom CSS grid ---
+        st.markdown(
+            """
+            <style>
+                .cards-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                    gap: 20px;
+                }
+                .internship-card {
+                    background: #1e293b;
+                    border-radius: 12px;
+                    padding: 16px;
+                    color: white;
+                    height: 100%;
+                }
+                .top-match { border: 2px solid #facc15; }
+                .badge {
+                    display: inline-block;
+                    padding: 3px 8px;
+                    margin: 2px;
+                    background: #334155;
+                    border-radius: 6px;
+                    font-size: 12px;
+                }
+                .perk-badge { background: #4ade80; color: black; }
+                .progress-bar-bg {
+                    background: #334155;
+                    border-radius: 6px;
+                    height: 18px;
+                    margin-top: 8px;
+                    overflow: hidden;
+                }
+                .apply-button {
+                    display: inline-block;
+                    margin-top: 10px;
+                    padding: 8px 12px;
+                    background: #2563eb;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 6px;
+                    font-weight: bold;
+                }
+            </style>
+            <div class="cards-grid">
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # --- Render cards ---
         for i, (_, row) in enumerate(top_internships.iterrows()):
             score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
             bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
-            top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
+            top_badge_html = '<div style="color:#facc15;font-weight:bold;">🏆 Top Match</div>' if i == 0 and st.session_state.page == 0 else ""
 
             skills_html = " ".join([f'<span class="badge">{skill}</span>' for skill in row["Skills"]])
             perks_html = " ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row["Perks"]])
 
             apply_button_html = ""
             if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                apply_button_html = f'<div class="apply-btn-container"><a href="{row["Website Link"]}" target="_blank" class="apply-button">Apply Now 🚀</a></div>'
+                apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">Apply Now 🚀</a>'
 
             html_card = f"""
-            <div class="internship-card {'top-match' if i == 0 else ''}">
+            <div class="internship-card {'top-match' if i == 0 and st.session_state.page == 0 else ''}">
                 {top_badge_html}
-                <h3 style="color:#fff;">{row['Role']}</h3>
-                <p style="color:#bbb;">🏢 {row['Company Name']}</p>
+                <h3>{row['Role']}</h3>
+                <p>🏢 {row['Company Name']}</p>
                 <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
                 <p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
                 <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
@@ -105,15 +202,32 @@ if predict_button:
                 {apply_button_html}
             </div>
             """
-            cols[i % 2].markdown(html_card, unsafe_allow_html=True)
+            st.markdown(html_card, unsafe_allow_html=True)
+
+        # Close grid
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # ------------------- PAGINATION -------------------
+        total_pages = int(np.ceil(len(filtered_data) / per_page))
+        col1, col2 = st.columns([1, 5])
+        with col1:
+            if st.session_state.page > 0:
+                if st.button("⬅️ Previous"):
+                    st.session_state.page -= 1
+                    st.experimental_rerun()
+        with col2:
+            if st.session_state.page < total_pages - 1:
+                if st.button("See More ➡️"):
+                    st.session_state.page += 1
+                    st.experimental_rerun()
 
         # ------------------- CSV DOWNLOAD -------------------
         csv_buffer = io.StringIO()
-        top_internships.to_csv(csv_buffer, index=False)
+        filtered_data.sort_values(by="Score", ascending=False).to_csv(csv_buffer, index=False)
         st.download_button(
-            label=t("💾 Download Top Internships as CSV"),
+            label=t("💾 Download All Matches as CSV"),
             data=csv_buffer.getvalue(),
-            file_name="top_internships.csv",
+            file_name="internships.csv",
             mime="text/csv"
         )
 else:
