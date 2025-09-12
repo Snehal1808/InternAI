@@ -107,10 +107,11 @@ st.markdown("""
         .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
-        /* 🔥 Updated Apply Button Style */
+
+        /* 🔥 UPDATED APPLY BUTTON STYLE */
         .apply-button {
-            background-color: #ff4b4b;
-            color: white !important;
+            background-color: #ff4b4b; /* Streamlit-like orangish-red */
+            color: white !important;   /* Keep text/URL white */
             padding: 10px 20px;
             border-radius: 12px;
             font-weight: bold;
@@ -121,7 +122,7 @@ st.markdown("""
             transition: all 0.3s ease;
         }
         .apply-button:hover {
-            background-color: #e63b3b;
+            background-color: #e63b3b; /* Slightly darker on hover */
             box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
             transform: scale(1.05);
         }
@@ -139,6 +140,8 @@ def load_data():
     df["Duration"] = df["Duration"].apply(parse_duration)
     df["Stipend"] = df["Stipend"].apply(parse_stipend)
     df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
+
+    # Add default Education column if not present
     if "Education" not in df.columns:
         df["Education"] = "Graduation"
     return df
@@ -177,6 +180,7 @@ if predict_button:
         st.warning(t("😔 No matching internships found! Try changing filters."))
     else:
         filtered_data = filtered_data[filtered_data["Stipend"] >= min_stipend]
+
         if filtered_data.empty:
             st.warning(t("😔 No internships meet your stipend requirement!"))
         else:
@@ -198,13 +202,9 @@ if predict_button:
 
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                    apply_button_html = f'''
-                    <div style="text-align:center; margin-top:10px;">
-                        <a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>
-                    </div>
-                    '''
-
-                html_card = f"""
+                    apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
+                    
+                col.markdown(f"""
                 <div class="internship-card {highlight_class}">
                     <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
                     <p style="color:#aaa;">🏢 {row['Company Name']}</p>
@@ -220,7 +220,6 @@ if predict_button:
                     </div>
                     {apply_button_html}
                 </div>
-                """
-                col.markdown(html_card, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 else:
     st.info(t("👈 Fill in your preferences and click **Get AI Recommendations** to see results."))
