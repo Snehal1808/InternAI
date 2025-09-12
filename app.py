@@ -104,56 +104,53 @@ def filter_internships(df, profile):
 st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
 
 st.markdown("""
-    <style>
-        body { background-color: #0e1117; color: #e0e0e0; }
-        .stApp { background-color: #0e1117; }
-        .internship-card {
-            padding: 20px;
-            border-radius: 16px;
-            background: #161a23;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
-        .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
-        .top-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: linear-gradient(45deg, #FFD700, #FFA500);
-            color: black;
-            font-weight: bold;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-        }
-        .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
-        .progress-bar-bg div { transition: width 1.2s ease-in-out; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
-        .perk-badge { background-color: #8B5CF6; }
-        .apply-button {
-            background-color: #ff4b4b;
-            color: white !important;
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-weight: bold;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 12px;
-            box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
-            transition: all 0.3s ease;
-        }
-        .apply-button:hover {
-            background-color: #e63b3b;
-            box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
-            transform: scale(1.05);
-        }
-        @media (max-width: 768px) {
-            .internship-card { width: 100% !important; margin-bottom: 15px; }
-        }
-    </style>
+<style>
+body { background-color: #0e1117; color: #e0e0e0; }
+.stApp { background-color: #0e1117; }
+.internship-card {
+    padding: 20px;
+    border-radius: 16px;
+    background: #161a23;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+.internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
+.top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
+.top-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    color: black;
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
+.perk-badge { background-color: #8B5CF6; }
+.apply-button {
+    background-color: #ff4b4b;
+    color: white !important;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: bold;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 12px;
+    box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
+    transition: all 0.3s ease;
+}
+.apply-button:hover {
+    background-color: #e63b3b;
+    box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
+    transform: scale(1.05);
+}
+.apply-btn-container { text-align: center; margin-top: 10px; }
+</style>
 """, unsafe_allow_html=True)
 
 st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
@@ -205,7 +202,7 @@ if predict_button:
     if filtered_data.empty:
         st.warning(t("😔 No matching internships found! Try changing filters."))
     else:
-        # Encode + Scale
+        # Encode + Scale Features
         try:
             filtered_data["Location_enc"] = le_location.transform(filtered_data["Location"])
         except:
@@ -217,33 +214,47 @@ if predict_button:
 
         X = filtered_data[["Location_enc", "Stipend", "Duration"]]
         X_scaled = scaler.transform(X)
-        filtered_data["Score"] = model.predict(X_scaled).flatten()
+
+        # Model Predictions
+        scores = model.predict(X_scaled).flatten()
+        filtered_data["Score"] = scores
 
         top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
         max_score = top_internships["Score"].max()
 
-        st.info(f"✅ Found {len(filtered_data)} matching internships.")
         st.subheader(t("🏆 Top Internship Recommendations"))
 
-        # ------------------- Export CSV & PDF -------------------
-        csv_data = top_internships.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download CSV of Top Internships", data=csv_data, file_name="top_internships.csv", mime="text/csv")
-
+        # ------------------- EXPORT BUTTONS -------------------
         def generate_pdf(df):
             pdf = FPDF()
             pdf.add_page()
-            pdf.set_font("Arial", size=12)
-            for idx, row in df.iterrows():
-                pdf.cell(0, 6, f"{row['Role']} at {row['Company Name']}", ln=True)
-                pdf.cell(0, 6, f"Location: {row['Location']} | Stipend: ₹{int(row['Stipend'])}/month | Duration: {row['Duration']} months", ln=True)
-                pdf.ln(2)
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
+            pdf.set_font("DejaVu", size=12)
+            for _, row in df.iterrows():
+                pdf.multi_cell(0, 6, f"💼 {row['Role']} at {row['Company Name']}")
+                pdf.multi_cell(0, 6, f"📍 Location: {row['Location']}")
+                pdf.multi_cell(0, 6, f"💰 Stipend: ₹{int(row['Stipend'])}/month")
+                pdf.multi_cell(0, 6, f"⏳ Duration: {row['Duration']} months")
+                pdf.multi_cell(0, 6, "🛠 Skills: " + ", ".join([str(s) for s in row['Skills']]))
+                pdf.multi_cell(0, 6, "🎁 Perks: " + ", ".join([str(p) for p in row['Perks']]))
+                pdf.ln(4)
             pdf_buffer = io.BytesIO()
             pdf.output(pdf_buffer)
             pdf_buffer.seek(0)
             return pdf_buffer
 
+        def generate_csv(df):
+            csv_buffer = io.StringIO()
+            df.to_csv(csv_buffer, index=False)
+            csv_buffer.seek(0)
+            return csv_buffer
+
         pdf_buffer = generate_pdf(top_internships)
+        csv_buffer = generate_csv(top_internships)
+
         st.download_button("📄 Download PDF", pdf_buffer, "top_internships.pdf", "application/pdf")
+        st.download_button("📁 Download CSV", csv_buffer, "top_internships.csv", "text/csv")
 
         # ------------------- DISPLAY CARDS -------------------
         cols = st.columns(2)
@@ -255,12 +266,11 @@ if predict_button:
             apply_button_html = ""
             if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                 apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
+            
+            # LinkedIn search button
+            linkedin_html = f'<div style="text-align:center;margin-top:5px;"><a href="https://www.linkedin.com/jobs/search/?keywords={row["Role"].replace(" ", "%20")}" target="_blank" class="apply-button" style="background-color:#0A66C2;">LinkedIn Jobs</a></div>'
 
-            # LinkedIn jobs button
-            linkedin_url = f"https://www.linkedin.com/jobs/search/?keywords={row['Role'].replace(' ', '%20')}&location={row['Location'].replace(' ', '%20')}"
-            linkedin_button = f'<div style="text-align:center;margin-top:5px;"><a href="{linkedin_url}" target="_blank" class="apply-button">🔗 LinkedIn Jobs</a></div>'
-
-            # Top badge
+            # Badge only for top internship
             top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
 
             # Progress bar color
@@ -282,7 +292,7 @@ if predict_button:
                 </div>
             </div>
             {apply_button_html}
-            {linkedin_button}
+            {linkedin_html}
             </div>
             """
             col.markdown(html_card, unsafe_allow_html=True)
