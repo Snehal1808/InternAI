@@ -198,7 +198,7 @@ if predict_button:
                 score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
                 bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
                 col = cols[i % 2]
-                highlight_class = "top-match" if (row["SkillMatchRatio"] >= 0.9 and row["Stipend"] >= min_stipend) else ""
+                highlight_class = "top-match" if (row["SkillMatchRatio"] >= 0.8 and row["Stipend"] >= min_stipend) else ""
 
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
