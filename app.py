@@ -168,16 +168,21 @@ if predict_button:
             max_score = top_internships["Score"].max()
             st.subheader(t("🏆 Top Internship Recommendations"))
 
-            for _, row in top_internships.iterrows():
+            cols = st.columns(2)
+            for i, (_, row) in enumerate(top_internships.iterrows()):
                 score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
                 bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
 
+                col = cols[i % 2]
+                highlight_class = "top-match" if (row["SkillMatchRatio"] >= 0.8 and row["Stipend"] >= min_stipend) else ""
+
+                # ✅ Apply Now button that redirects to Website Link
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                     apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
 
-                st.markdown(f"""
-                <div class="internship-card">
+                col.markdown(f"""
+                <div class="internship-card {highlight_class}">
                     <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
                     <p style="color:#aaa;">🏢 {row['Company Name']}</p>
                     <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
@@ -186,15 +191,7 @@ if predict_button:
                     <p>🛠 <b>{t('Skills Required')}:</b> {' '.join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
                     <p>🎁 <b>{t('Perks & Benefits')}:</b> {' '.join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
                     <div class="progress-bar-bg">
-                        <div style="
-                            background-color:{bar_color};
-                            width:{score_percentage}%;
-                            height:100%;
-                            text-align:center;
-                            color:white;
-                            font-weight:bold;
-                            font-size:12px;
-                            line-height:18px;">
+                        <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
                             {score_percentage}% {t('Match')}
                         </div>
                     </div>
