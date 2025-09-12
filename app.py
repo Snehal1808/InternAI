@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import ast
 import re
+import difflib
 from deep_translator import GoogleTranslator
 
 # ------------------- TRANSLATION SETUP -------------------
@@ -14,9 +15,14 @@ supported_languages = {
     "Tamil": "ta", "Telugu": "te", "Urdu": "ur"
 }
 
+# ✅ Expanded Perks List
 PERKS_BENEFITS = [
     "Certificate", "Letter of Recommendation", "Flexible Work Hours",
-    "5 Days a Week", "Job Offer", "Informal Dress Code"
+    "5 Days a Week", "Job Offer", "Informal Dress Code",
+    "Free Snacks & Beverages", "Free Snacks", "Free Beverages",
+    "Work From Home", "WFH", "Remote Work", "Health Insurance",
+    "Performance Bonus", "Team Outings", "Training & Development",
+    "Casual Dress Code", "Travel Reimbursement"
 ]
 
 # ------------------- CLEANING FUNCTIONS -------------------
@@ -41,6 +47,7 @@ def parse_stipend(stipend):
         return (int(nums[0]) + int(nums[1])) // 2
     return 0
 
+# ✅ Smarter Perk Parsing (fuzzy matching)
 def parse_skills(sk):
     if pd.isna(sk):
         return [], []
@@ -53,7 +60,13 @@ def parse_skills(sk):
 
     skills, perks = [], []
     for item in items:
-        if any(p.lower() in item.lower() for p in PERKS_BENEFITS):
+        item_lower = item.lower()
+        matched_perk = any(
+            difflib.SequenceMatcher(None, item_lower, p.lower()).ratio() > 0.7 
+            or p.lower() in item_lower
+            for p in PERKS_BENEFITS
+        )
+        if matched_perk:
             perks.append(item)
         else:
             skills.append(item)
@@ -87,23 +100,32 @@ st.markdown("""
             border-radius: 16px;
             background: #161a23;
             margin-bottom: 20px;
+            transition: all 0.3s ease;
         }
         .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
         .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
         .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
+
+        /* 🔥 UPDATED APPLY BUTTON STYLE */
         .apply-button {
-            background-color: #3B82F6;
-            color: white;
+            background-color: #ff4b4b; /* Streamlit-like orangish-red */
+            color: white !important;   /* Keep text/URL white */
             padding: 10px 20px;
-            border-radius: 10px;
+            border-radius: 12px;
             font-weight: bold;
             text-decoration: none;
             display: inline-block;
             margin-top: 10px;
+            box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
+            transition: all 0.3s ease;
         }
-        .apply-button:hover { background-color: #2563EB; }
+        .apply-button:hover {
+            background-color: #e63b3b; /* Slightly darker on hover */
+            box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
+            transform: scale(1.05);
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -118,6 +140,10 @@ def load_data():
     df["Duration"] = df["Duration"].apply(parse_duration)
     df["Stipend"] = df["Stipend"].apply(parse_stipend)
     df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
+
+    # Add default Education column if not present
+    if "Education" not in df.columns:
+        df["Education"] = "Graduation"
     return df
 
 data = load_data()
@@ -138,10 +164,9 @@ def t(text):
 available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
 available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
 
-# ✅ Default = empty ("Any")
 candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
 candidate_skills = st.sidebar.multiselect(t("🛠 Skills"), options=available_skills, default=[])
-candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Any", "Class 10", "Class 12", "Diploma", "Graduation"], index=0)
+candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
 min_stipend = st.sidebar.slider(t("💰 Minimum Stipend (₹/month)"), 0, 50000, 0, step=500)
 
 predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
@@ -168,29 +193,19 @@ if predict_button:
             max_score = top_internships["Score"].max()
             st.subheader(t("🏆 Top Internship Recommendations"))
 
-           
             cols = st.columns(2)
             for i, (_, row) in enumerate(top_internships.iterrows()):
                 score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
                 bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
-                internship_locs = [loc.strip() for loc in row["Location"].split(",") if loc.strip()]
-                unique_locs = list(dict.fromkeys(internship_locs))
-                shown_locs = unique_locs if not candidate_location else [
-                    loc for loc in unique_locs if any(cand.lower() in loc.lower() for cand in candidate_location)
-                ] or unique_locs
-
                 col = cols[i % 2]
-
-                # Highlight only if skill match >= 80% AND stipend >= min stipend
                 highlight_class = "top-match" if (row["SkillMatchRatio"] >= 0.8 and row["Stipend"] >= min_stipend) else ""
-                
-                # ✅ Clean button display (works in Streamlit)
+
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                     apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
-
-                st.markdown(f"""
-                <div class="internship-card">
+                    
+                col.markdown(f"""
+                <div class="internship-card {highlight_class}">
                     <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
                     <p style="color:#aaa;">🏢 {row['Company Name']}</p>
                     <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
@@ -199,15 +214,7 @@ if predict_button:
                     <p>🛠 <b>{t('Skills Required')}:</b> {' '.join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
                     <p>🎁 <b>{t('Perks & Benefits')}:</b> {' '.join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
                     <div class="progress-bar-bg">
-                        <div style="
-                            background-color:{bar_color};
-                            width:{score_percentage}%;
-                            height:100%;
-                            text-align:center;
-                            color:white;
-                            font-weight:bold;
-                            font-size:12px;
-                            line-height:18px;">
+                        <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
                             {score_percentage}% {t('Match')}
                         </div>
                     </div>
