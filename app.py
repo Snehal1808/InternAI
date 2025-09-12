@@ -107,22 +107,20 @@ st.markdown("""
         .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
-
         /* 🔥 UPDATED APPLY BUTTON STYLE */
         .apply-button {
-            background-color: #ff4b4b; /* Streamlit-like orangish-red */
-            color: white !important;   /* Keep text/URL white */
+            background-color: #ff4b4b;
+            color: white !important;
             padding: 10px 20px;
             border-radius: 12px;
             font-weight: bold;
             text-decoration: none;
             display: inline-block;
-            margin-top: 10px;
             box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
             transition: all 0.3s ease;
         }
         .apply-button:hover {
-            background-color: #e63b3b; /* Slightly darker on hover */
+            background-color: #e63b3b;
             box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
             transform: scale(1.05);
         }
@@ -140,8 +138,6 @@ def load_data():
     df["Duration"] = df["Duration"].apply(parse_duration)
     df["Stipend"] = df["Stipend"].apply(parse_stipend)
     df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
-
-    # Add default Education column if not present
     if "Education" not in df.columns:
         df["Education"] = "Graduation"
     return df
@@ -180,7 +176,6 @@ if predict_button:
         st.warning(t("😔 No matching internships found! Try changing filters."))
     else:
         filtered_data = filtered_data[filtered_data["Stipend"] >= min_stipend]
-
         if filtered_data.empty:
             st.warning(t("😔 No internships meet your stipend requirement!"))
         else:
@@ -198,14 +193,39 @@ if predict_button:
                 score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
                 bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
                 col = cols[i % 2]
-                highlight_class = "top-match" if (row["SkillMatchRatio"] >= 0.8 and row["Stipend"] >= min_stipend) else ""
+
+                # ✅ Glow + Badge only for first card
+                highlight_class = "top-match" if i == 0 else ""
+                top_badge_html = ""
+                if i == 0:
+                    top_badge_html = """
+                    <div style="
+                        position:absolute;
+                        top:10px;
+                        right:10px;
+                        background: linear-gradient(45deg, #FFD700, #FFA500);
+                        color: black;
+                        font-weight: bold;
+                        padding: 4px 10px;
+                        border-radius: 12px;
+                        font-size: 12px;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+                    ">
+                        🏆 Top Match
+                    </div>
+                    """
 
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                    apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
-                    
+                    apply_button_html = f"""
+                    <div style="text-align:center; margin-top:10px;">
+                        <a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>
+                    </div>
+                    """
+
                 col.markdown(f"""
-                <div class="internship-card {highlight_class}">
+                <div class="internship-card {highlight_class}" style="position:relative;">
+                    {top_badge_html}
                     <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
                     <p style="color:#aaa;">🏢 {row['Company Name']}</p>
                     <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
