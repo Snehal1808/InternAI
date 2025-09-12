@@ -102,24 +102,53 @@ def filter_internships(df, profile):
 # ------------------- STREAMLIT CONFIG -------------------
 st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
 
-# ------------------- CSS STYLING -------------------
 st.markdown("""
     <style>
         body { background-color: #0e1117; color: #e0e0e0; }
         .stApp { background-color: #0e1117; }
-        .internship-card { padding: 20px; border-radius: 16px; background: #161a23; margin-bottom: 20px; transition: all 0.3s ease; position: relative; width: 100%; }
+        .internship-card {
+            padding: 20px;
+            border-radius: 16px;
+            background: #161a23;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
         .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
         .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
-        .top-badge { position: absolute; top: 10px; right: 10px; background: linear-gradient(45deg, #FFD700, #FFA500); color: black; font-weight: bold; padding: 4px 10px; border-radius: 12px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+        .top-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: black;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
         .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
-        .progress-bar-fill { height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px; width:0; transition: width 1.5s ease-in-out; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
-        .apply-button { background-color: #ff4b4b; color: white !important; padding: 10px 20px; border-radius: 12px; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 12px; box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3); transition: all 0.3s ease; }
-        .apply-button:hover { background-color: #e63b3b; box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5); transform: scale(1.05); }
-        @media (max-width: 768px) {
-            .internship-card { width: 100% !important; }
+        .apply-button {
+            background-color: #ff4b4b;
+            color: white !important;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 12px;
+            box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
+            transition: all 0.3s ease;
         }
+        .apply-button:hover {
+            background-color: #e63b3b;
+            box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
+            transform: scale(1.05);
+        }
+        .apply-btn-container { text-align: center; margin-top: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -145,7 +174,6 @@ st.sidebar.header("🧑 Candidate Profile")
 selected_language = st.sidebar.selectbox("🌐 Select Language", list(supported_languages.keys()), index=0)
 target_lang = supported_languages[selected_language]
 
-@st.cache_data
 def t(text):
     if target_lang == "en":
         return text
@@ -185,22 +213,29 @@ if predict_button:
 
         X = filtered_data[["Location_enc", "Stipend", "Duration"]]
         X_scaled = scaler.transform(X)
-
         filtered_data["Score"] = model.predict(X_scaled).flatten()
-        top_internship = filtered_data.sort_values(by="Score", ascending=False).head(1)
-        max_score = top_internship["Score"].max()
 
-        st.subheader(t("🏆 Top Internship Recommendation"))
+        # Top 5 internships
+        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
+        max_score = top_internships["Score"].max()
 
-        for _, row in top_internship.iterrows():
+        st.subheader(t("🏆 Top Internship Recommendations"))
+
+        cols = st.columns(2)
+        for i, (_, row) in enumerate(top_internships.iterrows()):
             score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
+            col = cols[i % 2]
+
             apply_button_html = ""
             if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                 apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
 
+            top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
+            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
+
             html_card = f"""
-            <div class="internship-card top-match">
-            <div class="top-badge">⭐ Top Match</div>
+            <div class="internship-card {'top-match' if i == 0 else ''}">
+            {top_badge_html}
             <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
             <p style="color:#aaa;">🏢 {row['Company Name']}</p>
             <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
@@ -209,22 +244,22 @@ if predict_button:
             <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
             <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
             <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="background-color:{'#22c55e' if score_percentage >= 70 else '#facc15' if score_percentage >= 40 else '#ef4444'}; width:{score_percentage}%;">
+                <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
                 {score_percentage}% {t('Match')}
                 </div>
             </div>
             {apply_button_html}
             </div>
             """
-            st.markdown(html_card, unsafe_allow_html=True)
+            col.markdown(html_card, unsafe_allow_html=True)
 
         # ------------------- CSV DOWNLOAD -------------------
         csv_buffer = io.StringIO()
-        top_internship.to_csv(csv_buffer, index=False)
+        top_internships.to_csv(csv_buffer, index=False)
         st.download_button(
-            label=t("💾 Download Top Internship as CSV"),
+            label=t("💾 Download Top Internships as CSV"),
             data=csv_buffer.getvalue(),
-            file_name="top_internship.csv",
+            file_name="top_internships.csv",
             mime="text/csv"
         )
 
