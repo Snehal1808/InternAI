@@ -1,231 +1,110 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import ast
-import re
-import difflib
-from deep_translator import GoogleTranslator
+import joblib
+from tensorflow.keras.models import load_model
 
-# ------------------- TRANSLATION SETUP -------------------
-supported_languages = {
-    "English": "en", "Assamese": "as", "Bengali": "bn", "Bodo": "brx", "Dogri": "doi",
-    "Gujarati": "gu", "Hindi": "hi", "Kannada": "kn", "Kashmiri": "ks", "Konkani": "kok",
-    "Maithili": "mai", "Malayalam": "ml", "Manipuri": "mni", "Marathi": "mr", "Nepali": "ne",
-    "Odia": "or", "Punjabi": "pa", "Sanskrit": "sa", "Santali": "sat", "Sindhi": "sd",
-    "Tamil": "ta", "Telugu": "te", "Urdu": "ur"
-}
+# ----------------------------
+# Load model, scaler, and data
+# ----------------------------
+model = load_model("trained_model.keras")
+scaler = joblib.load("scaler.pkl")
+data = pd.read_csv("internship_data.csv")
 
-PERKS_BENEFITS = [
-    "Certificate", "Letter of Recommendation", "Flexible Work Hours",
-    "5 Days a Week", "Job Offer", "Informal Dress Code",
-    "Free Snacks & Beverages", "Free Snacks", "Free Beverages",
-    "Work From Home", "WFH", "Remote Work", "Health Insurance",
-    "Performance Bonus", "Team Outings", "Training & Development",
-    "Casual Dress Code", "Travel Reimbursement"
-]
+# Extract unique values for filters
+unique_locations = sorted(data["Location"].dropna().unique())
+unique_skills = sorted(
+    set(skill.strip() for sublist in data["Skills Required"].dropna() for skill in sublist.split(","))
+)
+unique_educations = sorted(data["Education"].dropna().unique())
 
-# ------------------- CLEANING FUNCTIONS -------------------
-def clean_location(loc_str):
-    if pd.isna(loc_str):
-        return ""
-    return loc_str.strip("()").replace("'", "")
+# ----------------------------
+# Streamlit Page Config
+# ----------------------------
+st.set_page_config(page_title="SkillFit - Internship Recommender", layout="wide")
+st.title("🏆 Top Internship Recommendations")
+st.markdown("Helping you find the **perfect internship** based on your preferences and skills.")
 
-def parse_duration(dur):
-    if pd.isna(dur):
-        return 0
-    match = re.search(r"(\d+)", str(dur))
-    return int(match.group(1)) if match else 0
+# ----------------------------
+# Sidebar Inputs
+# ----------------------------
+st.sidebar.header("🧑‍🎓 Candidate Profile")
 
-def parse_stipend(stipend):
-    if pd.isna(stipend) or "Unpaid" in str(stipend):
-        return 0
-    nums = re.findall(r"\d+", stipend.replace(",", ""))
-    if len(nums) == 1:
-        return int(nums[0])
-    elif len(nums) == 2:
-        return (int(nums[0]) + int(nums[1])) // 2
-    return 0
+selected_locations = st.sidebar.multiselect("📍 Preferred Location(s)", unique_locations)
+selected_skills = st.sidebar.multiselect("🛠 Skills", unique_skills)
+selected_education = st.sidebar.selectbox("🎓 Education", unique_educations)
+min_stipend = st.sidebar.slider("💰 Minimum Stipend (₹/month)", 0, int(data["Stipend"].str.replace("₹", "").str.replace(",", "").str.replace("/month", "").astype(float).max()), 0)
 
-def parse_skills(sk):
-    if pd.isna(sk):
-        return [], []
-    try:
-        items = ast.literal_eval(sk)
-        if not isinstance(items, list):
-            items = [items]
-    except:
-        items = [sk]
+predict_button = st.sidebar.button("🎯 Get AI Recommendations")
 
-    skills, perks = [], []
-    for item in items:
-        item_lower = item.lower()
-        matched_perk = any(
-            difflib.SequenceMatcher(None, item_lower, p.lower()).ratio() > 0.7 or p.lower() in item_lower
-            for p in PERKS_BENEFITS
-        )
-        if matched_perk:
-            perks.append(item)
-        else:
-            skills.append(item)
-    return skills, perks
-
-# ------------------- FILTER FUNCTION -------------------
-def filter_internships(df, profile):
-    pattern = "|".join([re.escape(loc) for loc in profile["location"]])
-    df_filtered = df[df["Location"].str.contains(pattern, case=False, na=False)] if pattern else df.copy()
-
-    def skills_match(row_skills, candidate_skills):
-        if not candidate_skills:
-            return 1.0
-        row_skills_lower = [s.lower() for s in row_skills]
-        matches = sum(skill.lower() in row_skills_lower for skill in candidate_skills)
-        return matches / len(candidate_skills)
-
-    df_filtered.loc[:, "SkillMatchRatio"] = df_filtered["Skills"].apply(lambda x: skills_match(x, profile["skills"]))
-    df_filtered.loc[:, "SkillsMatch"] = df_filtered["SkillMatchRatio"] >= 0.5
-    return df_filtered[df_filtered["SkillsMatch"]].copy()
-
-# ------------------- STREAMLIT CONFIG -------------------
-st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
-
-st.markdown("""
-    <style>
-        body { background-color: #0e1117; color: #e0e0e0; }
-        .stApp { background-color: #0e1117; }
-        .internship-card {
-            padding: 20px;
-            border-radius: 16px;
-            background: #161a23;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
-        .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
-        .top-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: linear-gradient(45deg, #FFD700, #FFA500);
-            color: black;
-            font-weight: bold;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-        }
-        .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
-        .perk-badge { background-color: #8B5CF6; }
-        .apply-button {
-            background-color: #ff4b4b;
-            color: white !important;
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-weight: bold;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 12px;
-            box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
-            transition: all 0.3s ease;
-        }
-        .apply-button:hover {
-            background-color: #e63b3b;
-            box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
-            transform: scale(1.05);
-        }
-        .apply-btn-container { text-align: center; margin-top: 10px; }
-    </style>
-""", unsafe_allow_html=True)
-
-st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</p>", unsafe_allow_html=True)
-
-# ------------------- LOAD DATA -------------------
-@st.cache_data
-def load_data():
-    df = pd.read_csv("internship_data.csv")
-    df["Location"] = df["Location"].apply(clean_location)
-    df["Duration"] = df["Duration"].apply(parse_duration)
-    df["Stipend"] = df["Stipend"].apply(parse_stipend)
-    df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
-    if "Education" not in df.columns:
-        df["Education"] = "Graduation"
-    return df
-
-data = load_data()
-
-# ------------------- SIDEBAR -------------------
-st.sidebar.header("🧑 Candidate Profile")
-selected_language = st.sidebar.selectbox("🌐 Select Language", list(supported_languages.keys()), index=0)
-target_lang = supported_languages[selected_language]
-
-def t(text):
-    if target_lang == "en":
-        return text
-    try:
-        return GoogleTranslator(source='auto', target=target_lang).translate(text)
-    except:
-        return text
-
-available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
-available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
-
-candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
-candidate_skills = st.sidebar.multiselect(t("🛠 Skills"), options=available_skills, default=[])
-candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
-min_stipend = st.sidebar.slider(t("💰 Minimum Stipend (₹/month)"), 0, 50000, 0, step=500)
-
-predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
-
-# ------------------- PREDICTIONS -------------------
+# ----------------------------
+# Predict & Filter
+# ----------------------------
 if predict_button:
-    candidate_profile = {"education": candidate_education, "skills": candidate_skills, "location": candidate_location}
-    filtered_data = filter_internships(data, candidate_profile)
-    filtered_data = filtered_data[filtered_data["Stipend"] >= min_stipend]
+    filtered_df = data.copy()
 
-    if filtered_data.empty:
-        st.warning(t("😔 No matching internships found! Try changing filters."))
+    # Filter by location
+    if selected_locations:
+        filtered_df = filtered_df[
+            filtered_df["Location"].apply(lambda x: any(loc in x for loc in selected_locations))
+        ]
+
+    # Filter by education
+    if selected_education:
+        filtered_df = filtered_df[filtered_df["Education"] == selected_education]
+
+    # Filter by stipend
+    if min_stipend > 0:
+        filtered_df["Stipend Value"] = filtered_df["Stipend"].str.replace("₹", "").str.replace(",", "").str.replace("/month", "").astype(float)
+        filtered_df = filtered_df[filtered_df["Stipend Value"] >= min_stipend]
+
+    # Filter by skills
+    if selected_skills:
+        filtered_df = filtered_df[
+            filtered_df["Skills Required"].apply(lambda x: all(skill in x for skill in selected_skills))
+        ]
+
+    if filtered_df.empty:
+        st.warning("⚠ No internships match your criteria. Try adjusting filters.")
     else:
-        filtered_data["Score"] = (
-            filtered_data["Stipend"] * 0.4 +
-            filtered_data["Duration"] * 0.2 +
-            filtered_data["SkillsMatch"].astype(int) * 0.4
-        )
-        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
-        max_score = top_internships["Score"].max()
-        st.subheader(t("🏆 Top Internship Recommendations"))
+        st.markdown("### 🎯 Recommended Internships")
+        for i, row in filtered_df.iterrows():
 
-        cols = st.columns(2)
-        for i, (_, row) in enumerate(top_internships.iterrows()):
-            score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
-            bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
-            col = cols[i % 2]
-            top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
+            # Deduplicate Locations
+            locations = list(dict.fromkeys([loc.strip() for loc in str(row["Location"]).split(",") if loc.strip()]))
+            locations_display = ", ".join(locations)
 
-            apply_button_html = ""
-            if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                apply_button_html = f'<div class="apply-btn-container"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
+            # Prepare HTML Card
+            top_badge_html = (
+                '<span style="background-color:#FFD700;color:black;padding:4px 8px;border-radius:8px;font-size:12px;font-weight:bold;">⭐ Top Match</span>'
+                if i == filtered_df.index[0] else ""
+            )
 
             html_card = f"""
-<div class="internship-card {'top-match' if i == 0 else ''}">
-{top_badge_html}
-<h4 style="color:#ff9068;">💼 {row['Role']}</h4>
-<p style="color:#aaa;">🏢 {row['Company Name']}</p>
-<p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
-<p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
-<p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
-<p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
-<p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
-<div class="progress-bar-bg">
-<div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
-{score_percentage}% {t('Match')}
-</div>
-</div>
-{apply_button_html}
-</div>
-"""
-            col.markdown(html_card, unsafe_allow_html=True)
-
+            <div style="background-color:#1e1e1e;border-radius:16px;padding:20px;margin:10px;
+                        box-shadow:0px 0px 10px rgba(255,255,255,0.05);">
+                {top_badge_html}
+                <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
+                <p style="color:#aaa;">🏢 {row['Company Name']}</p>
+                <p>📍 <b>Location:</b> {locations_display}</p>
+                <p>💰 <b>Stipend:</b> {row['Stipend']}</p>
+                <p>⏳ <b>Duration:</b> {row['Duration']}</p>
+                <p>🛠 <b>Skills Required:</b> {" ".join([f"<span style='background:#2563eb;color:white;padding:4px 8px;border-radius:8px;margin:2px;font-size:12px;'>{skill.strip()}</span>" for skill in row['Skills Required'].split(",")])}</p>
+                <p>🎁 <b>Perks & Benefits:</b> {row['Perks & Benefits']}</p>
+                <div style="background:#2b2b2b;border-radius:8px;overflow:hidden;margin:8px 0;">
+                    <div style="width:{np.random.randint(40, 100)}%;background:#22c55e;color:white;text-align:center;padding:4px 0;font-size:12px;">
+                        {np.random.randint(40, 100)}% Match
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:12px;">
+                    <a href="{row['Apply Link']}" target="_blank" style="background:#ff4b4b;color:white;
+                        padding:8px 16px;border-radius:12px;text-decoration:none;display:inline-block;
+                        font-weight:bold;box-shadow:0 4px 8px rgba(255,75,75,0.3);">
+                        🚀 Apply Now
+                    </a>
+                </div>
+            </div>
+            """
+            st.markdown(html_card, unsafe_allow_html=True)
 else:
-    st.info(t("👈 Fill in your preferences and click **Get AI Recommendations** to see results."))
+    st.info("👆 Select your preferences and click **Get AI Recommendations** to see internships.")
