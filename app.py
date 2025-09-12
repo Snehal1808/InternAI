@@ -83,20 +83,6 @@ def load_model():
 
 model, le_location, le_company, scaler = load_model()
 
-# ------------------- LOAD DATA -------------------
-@st.cache_data
-def load_data():
-    df = pd.read_csv("internship_data.csv")
-    df["Location"] = df["Location"].apply(clean_location)
-    df["Duration"] = df["Duration"].apply(parse_duration)
-    df["Stipend"] = df["Stipend"].apply(parse_stipend)
-    df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
-    if "Education" not in df.columns:
-        df["Education"] = "Graduation"
-    return df
-
-data = load_data()
-
 # ------------------- FILTER FUNCTION -------------------
 def filter_internships(df, profile):
     pattern = "|".join([re.escape(loc) for loc in profile["location"]])
@@ -120,25 +106,13 @@ st.markdown("""
     <style>
         body { background-color: #0e1117; color: #e0e0e0; }
         .stApp { background-color: #0e1117; }
-
-        .cards-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-        }
         .internship-card {
-            flex: 1 1 45%;
-            min-width: 300px;
-            max-width: 500px;
             padding: 20px;
             border-radius: 16px;
             background: #161a23;
+            margin-bottom: 20px;
             transition: all 0.3s ease;
             position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
         }
         .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
         .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
@@ -155,21 +129,6 @@ st.markdown("""
             box-shadow: 0 2px 6px rgba(0,0,0,0.4);
         }
         .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
-        .progress-bar-fill {
-            height: 100%;
-            text-align:center;
-            color:white;
-            font-weight:bold;
-            font-size:12px;
-            line-height:18px;
-            width: 0;
-            border-radius: 10px;
-            animation: fillProgress 1.5s forwards;
-        }
-        @keyframes fillProgress {
-            from { width: 0%; }
-            to { width: var(--progress-width); }
-        }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
         .apply-button {
@@ -189,15 +148,26 @@ st.markdown("""
             box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
             transform: scale(1.05);
         }
-
-        @media (max-width: 768px) {
-            .internship-card { flex: 1 1 90%; }
-        }
+        .apply-btn-container { text-align: center; margin-top: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</p>", unsafe_allow_html=True)
+
+# ------------------- LOAD DATA -------------------
+@st.cache_data
+def load_data():
+    df = pd.read_csv("internship_data.csv")
+    df["Location"] = df["Location"].apply(clean_location)
+    df["Duration"] = df["Duration"].apply(parse_duration)
+    df["Stipend"] = df["Stipend"].apply(parse_stipend)
+    df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
+    if "Education" not in df.columns:
+        df["Education"] = "Graduation"
+    return df
+
+data = load_data()
 
 # ------------------- SIDEBAR -------------------
 st.sidebar.header("🧑 Candidate Profile")
@@ -219,6 +189,7 @@ candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), opt
 candidate_skills = st.sidebar.multiselect(t("🛠 Skills"), options=available_skills, default=[])
 candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
 min_stipend = st.sidebar.slider(t("💰 Minimum Stipend (₹/month)"), 0, 50000, 0, step=500)
+
 predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
 
 # ------------------- PREDICTIONS -------------------
@@ -230,32 +201,40 @@ if predict_button:
     if filtered_data.empty:
         st.warning(t("😔 No matching internships found! Try changing filters."))
     else:
-        try: filtered_data["Location_enc"] = le_location.transform(filtered_data["Location"])
-        except: filtered_data["Location_enc"] = 0
-        try: filtered_data["Company_enc"] = le_company.transform(filtered_data["Company Name"])
-        except: filtered_data["Company_enc"] = 0
+        try:
+            filtered_data["Location_enc"] = le_location.transform(filtered_data["Location"])
+        except:
+            filtered_data["Location_enc"] = 0
+
+        try:
+            filtered_data["Company_enc"] = le_company.transform(filtered_data["Company Name"])
+        except:
+            filtered_data["Company_enc"] = 0
 
         X = filtered_data[["Location_enc", "Stipend", "Duration"]]
         X_scaled = scaler.transform(X)
+        filtered_data["Score"] = model.predict(X_scaled).flatten()
 
-        scores = model.predict(X_scaled).flatten()
-        filtered_data["Score"] = scores
-
+        # Top 5 internships
         top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
         max_score = top_internships["Score"].max()
 
         st.subheader(t("🏆 Top Internship Recommendations"))
 
-        st.markdown('<div class="cards-container">', unsafe_allow_html=True)
+        cols = st.columns(2)
         for i, (_, row) in enumerate(top_internships.iterrows()):
             score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
-            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
-            top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
+            col = cols[i % 2]
+
             apply_button_html = ""
             if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                 apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
+
+            top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
+            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
+
             html_card = f"""
-            <div class="internship-card {'top-match' if i==0 else ''}">
+            <div class="internship-card {'top-match' if i == 0 else ''}">
             {top_badge_html}
             <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
             <p style="color:#aaa;">🏢 {row['Company Name']}</p>
@@ -265,22 +244,24 @@ if predict_button:
             <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
             <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
             <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="--progress-width:{score_percentage}%; background-color:{bar_color};">
-                    {score_percentage}% {t('Match')}
+                <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
+                {score_percentage}% {t('Match')}
                 </div>
             </div>
             {apply_button_html}
             </div>
             """
-            st.markdown(html_card, unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+            col.markdown(html_card, unsafe_allow_html=True)
 
-        # CSV DOWNLOAD
+        # ------------------- CSV DOWNLOAD -------------------
         csv_buffer = io.StringIO()
         top_internships.to_csv(csv_buffer, index=False)
-        csv_data = csv_buffer.getvalue()
-        st.download_button(label=t("💾 Download Top Internships as CSV"),
-                           data=csv_data, file_name="top_internships.csv", mime="text/csv")
+        st.download_button(
+            label=t("💾 Download Top Internships as CSV"),
+            data=csv_buffer.getvalue(),
+            file_name="top_internships.csv",
+            mime="text/csv"
+        )
 
 else:
     st.info(t("👈 Fill in your preferences and click **Get AI Recommendations** to see results."))
