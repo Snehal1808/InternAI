@@ -168,10 +168,22 @@ if predict_button:
             max_score = top_internships["Score"].max()
             st.subheader(t("🏆 Top Internship Recommendations"))
 
-            for _, row in top_internships.iterrows():
+           
+            cols = st.columns(2)
+            for i, (_, row) in enumerate(top_internships.iterrows()):
                 score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
                 bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
+                internship_locs = [loc.strip() for loc in row["Location"].split(",") if loc.strip()]
+                unique_locs = list(dict.fromkeys(internship_locs))
+                shown_locs = unique_locs if not candidate_location else [
+                    loc for loc in unique_locs if any(cand.lower() in loc.lower() for cand in candidate_location)
+                ] or unique_locs
 
+                col = cols[i % 2]
+
+                # Highlight only if skill match >= 80% AND stipend >= min stipend
+                highlight_class = "top-match" if (row["SkillMatchRatio"] >= 0.8 and row["Stipend"] >= min_stipend) else ""
+                
                 # ✅ Clean button display (works in Streamlit)
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
