@@ -106,26 +106,13 @@ st.markdown("""
     <style>
         body { background-color: #0e1117; color: #e0e0e0; }
         .stApp { background-color: #0e1117; }
-
-        .cards-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-            align-items: stretch; /* ensures equal height */
-        }
         .internship-card {
-            flex: 1 1 45%;
-            min-width: 300px;
-            max-width: 500px;
             padding: 20px;
             border-radius: 16px;
             background: #161a23;
+            margin-bottom: 20px;
             transition: all 0.3s ease;
             position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
         }
         .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
         .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
@@ -142,21 +129,6 @@ st.markdown("""
             box-shadow: 0 2px 6px rgba(0,0,0,0.4);
         }
         .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
-        .progress-bar-fill {
-            height: 100%;
-            text-align:center;
-            color:white;
-            font-weight:bold;
-            font-size:12px;
-            line-height:18px;
-            width: 0;
-            border-radius: 10px;
-            animation: fillProgress 1.5s forwards;
-        }
-        @keyframes fillProgress {
-            from { width: 0%; }
-            to { width: var(--progress-width); }
-        }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
         .apply-button {
@@ -176,10 +148,7 @@ st.markdown("""
             box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
             transform: scale(1.05);
         }
-
-        @media (max-width: 768px) {
-            .internship-card { flex: 1 1 90%; }
-        }
+        .apply-btn-container { text-align: center; margin-top: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
