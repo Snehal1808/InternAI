@@ -170,8 +170,19 @@ def load_data():
 data = load_data()
 
 # ------------------- SIDEBAR -------------------
-st.sidebar.header("🧑 Candidate Profile")
-selected_language = st.sidebar.selectbox("🌐 Select Language", list(supported_languages.keys()), index=0)
+st.sidebar.markdown(
+    """
+    <style>
+        .sidebar-title { font-size:18px; font-weight:bold; color:#ffffff; margin-bottom:10px; }
+        .sidebar-section { margin-bottom:20px; padding:10px; border-radius:10px; background:#161a23; }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.sidebar.markdown("<div class='sidebar-title'>🧑 Candidate Profile</div>", unsafe_allow_html=True)
+
+selected_language = st.sidebar.selectbox("🌐 Language", list(supported_languages.keys()), index=0)
 target_lang = supported_languages[selected_language]
 
 def t(text):
@@ -182,15 +193,28 @@ def t(text):
     except:
         return text
 
-available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
-available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
+with st.sidebar:
+    with st.container():
+        st.markdown("<div class='sidebar-section'>", unsafe_allow_html=True)
+        candidate_education = st.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
-candidate_skills = st.sidebar.multiselect(t("🛠 Skills"), options=available_skills, default=[])
-candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
-min_stipend = st.sidebar.slider(t("💰 Minimum Stipend (₹/month)"), 0, 50000, 0, step=500)
+        st.markdown("<div class='sidebar-section'>", unsafe_allow_html=True)
+        min_stipend = st.slider(t("💰 Minimum Stipend (₹/month)"), 0, 50000, 0, step=500)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
+        available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
+        st.markdown("<div class='sidebar-section'>", unsafe_allow_html=True)
+        candidate_location = st.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
+        st.markdown("<div class='sidebar-section'>", unsafe_allow_html=True)
+        candidate_skills = st.multiselect(t("🛠 Skills"), options=available_skills, default=[])
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        predict_button = st.button(t("🔮 Get AI Recommendations"), use_container_width=True)
+
 
 # ------------------- PREDICTIONS -------------------
 if predict_button:
@@ -215,16 +239,16 @@ if predict_button:
         X_scaled = scaler.transform(X)
         filtered_data["Score"] = model.predict(X_scaled).flatten()
 
-        # Sort by score
-        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(10)
+        # Show only 6 internships max
+        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(6)
         max_score = top_internships["Score"].max()
 
         st.subheader(t("🏆 Your Matches"))
 
+        cols = st.columns(2)  # grid layout like screenshot
         for i, (_, row) in enumerate(top_internships.iterrows()):
             score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
             bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
-
             top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
 
             skills_html = " ".join([f'<span class="badge">{skill}</span>' for skill in row["Skills"]])
@@ -252,7 +276,7 @@ if predict_button:
                 {apply_button_html}
             </div>
             """
-            st.markdown(html_card, unsafe_allow_html=True)
+            cols[i % 2].markdown(html_card, unsafe_allow_html=True)
 
         # ------------------- CSV DOWNLOAD -------------------
         csv_buffer = io.StringIO()
