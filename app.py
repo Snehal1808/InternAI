@@ -138,10 +138,10 @@ def t(text):
 available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
 available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
 
-# ✅ Default = empty ("Any")
+# ✅ No "Any" option, just leave blank by default
 candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
 candidate_skills = st.sidebar.multiselect(t("🛠 Skills"), options=available_skills, default=[])
-candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Any", "Class 10", "Class 12", "Diploma", "Graduation"], index=0)
+candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
 min_stipend = st.sidebar.slider(t("💰 Minimum Stipend (₹/month)"), 0, 50000, 0, step=500)
 
 predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
@@ -172,7 +172,6 @@ if predict_button:
                 score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
                 bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
 
-                # ✅ Clean button display (works in Streamlit)
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                     apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
