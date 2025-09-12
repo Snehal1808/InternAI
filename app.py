@@ -1,83 +1,58 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import joblib
+import os
+from tensorflow.keras.models import load_model
 
-# Load model and encoders
-model = joblib.load("model.pkl")
-le_location = joblib.load("le_location.pkl")
-le_skills = joblib.load("le_skills.pkl")
-le_education = joblib.load("le_education.pkl")
+# =========================
+# Load model + encoders
+# =========================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# ---- Safe transform for LabelEncoder (handles unseen categories) ----
-def safe_transform(encoder, values):
-    known_classes = set(encoder.classes_)
-    transformed = []
-    for v in values:
-        if v in known_classes:
-            transformed.append(encoder.transform([v])[0])
-        else:
-            transformed.append(-1)   # Assign -1 for unseen values
-    return transformed
+model = load_model(os.path.join(BASE_DIR, "internship_model.keras"))
+le_location = joblib.load(os.path.join(BASE_DIR, "le_location.pkl"))
+le_company = joblib.load(os.path.join(BASE_DIR, "le_company.pkl"))
+scaler = joblib.load(os.path.join(BASE_DIR, "scaler.pkl"))
 
-# ---- AI Recommendation Page ----
-def recommendations_page():
-    st.title("🎯 AI-Powered Internship Recommendations")
+# =========================
+# Streamlit UI
+# =========================
+st.title("🎓 InternAI - Internship Recommendation")
 
-    # Candidate Profile Inputs
-    st.sidebar.header("🧑‍🎓 Candidate Profile")
-    language = st.sidebar.selectbox("Select Language", ["English", "Hindi"])
-    location = st.sidebar.multiselect("Preferred Location(s)", options=["Delhi", "Bangalore", "Hyderabad", "Mumbai", "Chennai", "Pune"])
-    skills = st.sidebar.multiselect("Skills", options=["Python", "ML", "DL", "SQL", "Java", "C++", "Data Analysis"])
-    education = st.sidebar.selectbox("Education", ["Diploma", "Graduation", "Post-Graduation", "PhD"])
-    stipend = st.sidebar.slider("Minimum Stipend (₹/month)", 0, 50000, 0)
+st.sidebar.header("🧑 Candidate Profile")
+language = st.sidebar.selectbox("Select Language", ["English", "Hindi"])
+locations = st.sidebar.multiselect("Preferred Location(s)", le_location.classes_)
+skills = st.sidebar.text_area("Skills (comma separated)", "Python, Data Analysis")
+education = st.sidebar.selectbox("Education", ["High School", "Graduation", "Post-Graduation"])
+stipend = st.sidebar.slider("Minimum Stipend (₹/month)", 0, 50000, 0)
 
-    if st.sidebar.button("🤖 Get AI Recommendations"):
-        if not skills or not location:
-            st.warning("⚠️ Please select at least one skill and one location.")
-            return
+if st.sidebar.button("🔍 Get AI Recommendations"):
+    # Convert inputs
+    skills_list = [s.strip() for s in skills.split(",") if s.strip()]
 
-        # Create candidate DataFrame
-        candidate_data = pd.DataFrame({
-            "Location": location,
-            "Skills": skills,
-            "Education": [education] * len(location)
-        })
+    # Handle location encoding safely
+    if not locations:
+        st.error("Please select at least one location.")
+    else:
+        for loc in locations:
+            if loc not in le_location.classes_:
+                st.error(f"⚠️ Unknown location: {loc}. Please select a valid one.")
+                st.stop()
 
-        # Encode safely
-        candidate_data["Location_enc"] = safe_transform(le_location, candidate_data["Location"])
-        candidate_data["Skills_enc"] = safe_transform(le_skills, candidate_data["Skills"])
-        candidate_data["Education_enc"] = safe_transform(le_education, candidate_data["Education"])
+        loc_encoded = le_location.transform([locations[0]])[0]  # taking first for demo
+        comp_encoded = le_company.transform([le_company.classes_[0]])[0]  # dummy (no company input)
 
-        # Predict
-        X = candidate_data[["Location_enc", "Skills_enc", "Education_enc"]]
-        candidate_data["Match_Score"] = model.predict_proba(X)[:, 1]
+        # Feature vector
+        features = np.array([[loc_encoded, stipend, 2]])  # fixed duration=2 months for demo
+        features_scaled = scaler.transform(features)
 
-        # Filter based on stipend
-        candidate_data = candidate_data[candidate_data["Match_Score"] > 0.3]  # threshold
-        candidate_data = candidate_data.sort_values(by="Match_Score", ascending=False)
+        # Prediction score
+        score = model.predict(features_scaled)[0][0]
 
-        if candidate_data.empty:
-            st.error("❌ No recommendations found. Try changing your preferences.")
-        else:
-            for _, row in candidate_data.iterrows():
-                st.markdown(
-                    f"""
-                    <div style="border:1px solid #ccc; border-radius:10px; padding:15px; margin:10px 0; background:#1E1E1E;">
-                        <h4 style="color:#FF4B4B;">📍 {row['Location']} | 🎓 {row['Education']}</h4>
-                        <p><b>Skill:</b> {row['Skills']}</p>
-                        <p><b>AI Match Score:</b> {row['Match_Score']:.2f}</p>
-                        <div style="text-align:center; margin-top:10px;">
-                            <a href="#" target="_blank">
-                                <button style="background-color:#FF4B4B; color:white; border:none; border-radius:8px; padding:8px 20px; cursor:pointer;">
-                                    Apply
-                                </button>
-                            </a>
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-# Run app
-if __name__ == "__main__":
-    recommendations_page()
+        st.subheader("✨ Recommended Internship")
+        st.write(f"**Score:** {score:.2f}")
+        st.write(f"**Location:** {locations[0]}")
+        st.write(f"**Skills:** {', '.join(skills_list)}")
+        st.write(f"**Education:** {education}")
+        st.success("🎯 This internship is a good match for you!")
