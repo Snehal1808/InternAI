@@ -101,8 +101,60 @@ def filter_internships(df, profile):
 # ------------------- STREAMLIT CONFIG -------------------
 st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
 
+st.markdown("""
+    <style>
+        body { background-color: #0e1117; color: #e0e0e0; }
+        .stApp { background-color: #0e1117; }
+        .internship-card {
+            padding: 20px;
+            border-radius: 16px;
+            background: #161a23;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
+        .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
+        .top-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: black;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+        .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
+        .perk-badge { background-color: #8B5CF6; }
+        .apply-button {
+            background-color: #ff4b4b;
+            color: white !important;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 12px;
+            box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
+            transition: all 0.3s ease;
+        }
+        .apply-button:hover {
+            background-color: #e63b3b;
+            box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
+            transform: scale(1.05);
+        }
+        .apply-btn-container { text-align: center; margin-top: 10px; }
+    </style>
+""", unsafe_allow_html=True)
+
 st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</p>", unsafe_allow_html=True)
+
+
 
 # ------------------- LOAD DATA -------------------
 @st.cache_data
