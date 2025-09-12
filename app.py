@@ -235,7 +235,6 @@ if predict_button:
                 apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
 
             html_card = f"""
-<div style="padding:20px;border-radius:16px;background:#161a23;margin-bottom:20px;position:relative;">
 <div class="internship-card {'top-match' if i == 0 else ''}">
 {top_badge_html}
 <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
@@ -245,8 +244,6 @@ if predict_button:
 <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
 <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
 <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
-<div style="background-color:#334155;border-radius:10px;height:18px;overflow:hidden;">
-<div style="background-color:#22C55E;width:{score_percentage}%;height:100%;text-align:center;color:white;font-weight:bold;font-size:12px;line-height:18px;">
 <div class="progress-bar-bg">
 <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
 {score_percentage}% {t('Match')}
