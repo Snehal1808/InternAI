@@ -1,10 +1,9 @@
 streamlit
 pandas
 numpy
-scikit-learn
 tensorflow
+scikit-learn
 joblib
 deep-translator
-googletrans
+fpdf
 plotly
-cachetools
