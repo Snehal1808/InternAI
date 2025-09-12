@@ -15,11 +15,14 @@ supported_languages = {
     "Tamil": "ta", "Telugu": "te", "Urdu": "ur"
 }
 
+# ✅ Expanded Perks List
 PERKS_BENEFITS = [
     "Certificate", "Letter of Recommendation", "Flexible Work Hours",
     "5 Days a Week", "Job Offer", "Informal Dress Code",
-    "Free Snacks & Beverages", "Work From Home", "Health Insurance",
-    "Performance Bonus", "Training & Development", "Team Outings"
+    "Free Snacks & Beverages", "Free Snacks", "Free Beverages",
+    "Work From Home", "WFH", "Remote Work", "Health Insurance",
+    "Performance Bonus", "Team Outings", "Training & Development",
+    "Casual Dress Code", "Travel Reimbursement"
 ]
 
 # ------------------- CLEANING FUNCTIONS -------------------
@@ -44,6 +47,7 @@ def parse_stipend(stipend):
         return (int(nums[0]) + int(nums[1])) // 2
     return 0
 
+# ✅ Smarter Perk Parsing (fuzzy matching)
 def parse_skills(sk):
     if pd.isna(sk):
         return [], []
@@ -56,10 +60,10 @@ def parse_skills(sk):
 
     skills, perks = [], []
     for item in items:
-        # Fuzzy match to perks list (case-insensitive, partial matching)
+        item_lower = item.lower()
         matched_perk = any(
-            difflib.SequenceMatcher(None, item.lower(), p.lower()).ratio() > 0.7 
-            or p.lower() in item.lower()
+            difflib.SequenceMatcher(None, item_lower, p.lower()).ratio() > 0.7 
+            or p.lower() in item_lower
             for p in PERKS_BENEFITS
         )
         if matched_perk:
@@ -96,6 +100,7 @@ st.markdown("""
             border-radius: 16px;
             background: #161a23;
             margin-bottom: 20px;
+            transition: all 0.3s ease;
         }
         .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
         .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
@@ -127,6 +132,10 @@ def load_data():
     df["Duration"] = df["Duration"].apply(parse_duration)
     df["Stipend"] = df["Stipend"].apply(parse_stipend)
     df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
+
+    # Add default Education column if not present
+    if "Education" not in df.columns:
+        df["Education"] = "Graduation"
     return df
 
 data = load_data()
@@ -147,7 +156,6 @@ def t(text):
 available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
 available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
 
-# ✅ No "Any" option, just leave blank by default
 candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
 candidate_skills = st.sidebar.multiselect(t("🛠 Skills"), options=available_skills, default=[])
 candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
@@ -181,11 +189,9 @@ if predict_button:
             for i, (_, row) in enumerate(top_internships.iterrows()):
                 score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
                 bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
-
                 col = cols[i % 2]
                 highlight_class = "top-match" if (row["SkillMatchRatio"] >= 0.8 and row["Stipend"] >= min_stipend) else ""
 
-                # ✅ Apply Now button that redirects to Website Link
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                     apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
