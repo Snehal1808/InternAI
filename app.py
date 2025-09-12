@@ -91,6 +91,8 @@ def filter_internships(df, profile):
 # ------------------- STREAMLIT CONFIG -------------------
 st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
 
+st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
+
 st.markdown("""
     <style>
         body { background-color: #0e1117; color: #e0e0e0; }
@@ -100,7 +102,6 @@ st.markdown("""
             border-radius: 16px;
             background: #161a23;
             margin-bottom: 20px;
-            transition: all 0.3s ease;
         }
         .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
         .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
