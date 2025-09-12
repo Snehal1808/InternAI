@@ -91,39 +91,17 @@ def filter_internships(df, profile):
 # ------------------- STREAMLIT CONFIG -------------------
 st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
 
-st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
-
 st.markdown("""
     <style>
         body { background-color: #0e1117; color: #e0e0e0; }
-        .stApp { background-color: #0e1117; }
-        .internship-card {
-            padding: 20px;
+@@ -100,7 +102,6 @@ def skills_match(row_skills, candidate_skills):
             border-radius: 16px;
             background: #161a23;
             margin-bottom: 20px;
+            transition: all 0.3s ease;
         }
         .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
         .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
-        .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
-        .perk-badge { background-color: #8B5CF6; }
-        .apply-button {
-            background-color: #3B82F6;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: bold;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 10px;
-        }
-        .apply-button:hover { background-color: #2563EB; }
-    </style>
-""", unsafe_allow_html=True)
-
-st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</p>", unsafe_allow_html=True)
 
 # ------------------- LOAD DATA -------------------
 @st.cache_data
