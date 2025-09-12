@@ -64,12 +64,6 @@ def filter_internships(df, profile):
     pattern = "|".join([re.escape(loc) for loc in profile["location"]])
     df_filtered = df[df["Location"].str.contains(pattern, case=False, na=False)] if pattern else df.copy()
 
-    # ✅ Education filtering (keeps equal or lower education requirement)
-    education_order = ["Class 10", "Class 12", "Diploma", "Graduation"]
-    if profile["education"] in education_order:
-        selected_index = education_order.index(profile["education"])
-        df_filtered = df_filtered[df_filtered["Education"].apply(lambda e: e in education_order and education_order.index(e) <= selected_index)]
-
     def skills_match(row_skills, candidate_skills):
         if not candidate_skills:
             return 1.0
@@ -124,12 +118,9 @@ def load_data():
     df["Duration"] = df["Duration"].apply(parse_duration)
     df["Stipend"] = df["Stipend"].apply(parse_stipend)
     df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
-
-    # ✅ Add default Education column (Graduation)
-    if "Education" not in df.columns:
-        df["Education"] = "Graduation"
-
     return df
+
+data = load_data()
 
 # ------------------- SIDEBAR -------------------
 st.sidebar.header("🧑 Candidate Profile")
@@ -147,6 +138,7 @@ def t(text):
 available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
 available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
 
+# ✅ No "Any" option, just leave blank by default
 candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
 candidate_skills = st.sidebar.multiselect(t("🛠 Skills"), options=available_skills, default=[])
 candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
@@ -176,21 +168,16 @@ if predict_button:
             max_score = top_internships["Score"].max()
             st.subheader(t("🏆 Top Internship Recommendations"))
 
-            cols = st.columns(2)
-            for i, (_, row) in enumerate(top_internships.iterrows()):
+            for _, row in top_internships.iterrows():
                 score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
                 bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
 
-                col = cols[i % 2]
-                highlight_class = "top-match" if (row["SkillMatchRatio"] >= 0.8 and row["Stipend"] >= min_stipend) else ""
-
-                # ✅ Apply Now button that redirects to Website Link
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                     apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
 
-                col.markdown(f"""
-                <div class="internship-card {highlight_class}">
+                st.markdown(f"""
+                <div class="internship-card">
                     <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
                     <p style="color:#aaa;">🏢 {row['Company Name']}</p>
                     <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
@@ -199,7 +186,15 @@ if predict_button:
                     <p>🛠 <b>{t('Skills Required')}:</b> {' '.join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
                     <p>🎁 <b>{t('Perks & Benefits')}:</b> {' '.join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
                     <div class="progress-bar-bg">
-                        <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
+                        <div style="
+                            background-color:{bar_color};
+                            width:{score_percentage}%;
+                            height:100%;
+                            text-align:center;
+                            color:white;
+                            font-weight:bold;
+                            font-size:12px;
+                            line-height:18px;">
                             {score_percentage}% {t('Match')}
                         </div>
                     </div>
