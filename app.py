@@ -28,7 +28,7 @@ PERKS_BENEFITS = [
 def clean_location(loc_str):
     if pd.isna(loc_str):
         return ""
-    return loc_str.strip("()").replace("'", "")
+    return loc_str.strip("()").replace("'", "").split(",")[0].strip()
 
 def parse_duration(dur):
     if pd.isna(dur):
@@ -39,7 +39,7 @@ def parse_duration(dur):
 def parse_stipend(stipend):
     if pd.isna(stipend) or "Unpaid" in str(stipend):
         return 0
-    nums = re.findall(r"\d+", stipend.replace(",", ""))
+    nums = re.findall(r"\d+", str(stipend).replace(",", ""))
     if len(nums) == 1:
         return int(nums[0])
     elif len(nums) == 2:
@@ -71,8 +71,11 @@ def parse_skills(sk):
 
 # ------------------- FILTER FUNCTION -------------------
 def filter_internships(df, profile):
-    pattern = "|".join([re.escape(loc) for loc in profile["location"]])
-    df_filtered = df[df["Location"].str.contains(pattern, case=False, na=False)] if pattern else df.copy()
+    if profile["location"]:
+        pattern = "|".join([re.escape(loc) for loc in profile["location"]])
+        df_filtered = df[df["Location"].str.contains(pattern, case=False, na=False)]
+    else:
+        df_filtered = df.copy()
 
     def skills_match(row_skills, candidate_skills):
         if not candidate_skills:
@@ -168,7 +171,7 @@ def t(text):
     except:
         return text
 
-available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
+available_locations = sorted(data["Location"].dropna().unique())
 available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
 
 candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
@@ -182,7 +185,7 @@ predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
 if predict_button:
     candidate_profile = {"education": candidate_education, "skills": candidate_skills, "location": candidate_location}
     filtered_data = filter_internships(data, candidate_profile)
-    filtered_data = filtered_data[filtered_data["Stipend"] >= min_stipend]
+    filtered_data = filtered_data[filtered_data["Stipend"].astype(int) >= int(min_stipend)]
 
     if filtered_data.empty:
         st.warning(t("😔 No matching internships found! Try changing filters."))
@@ -204,7 +207,7 @@ if predict_button:
             top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
 
             apply_button_html = ""
-            if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
+            if pd.notna(row.get("Website Link")) and str(row["Website Link"]).strip():
                 apply_button_html = f'<div class="apply-btn-container"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
 
             html_card = f"""
