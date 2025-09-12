@@ -230,28 +230,36 @@ if predict_button:
             score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
             col = cols[i % 2]
 
+            # 🔹 Apply button if link exists
             apply_button_html = ""
             if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                 apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
 
+            # 🔹 Badge only for top internship
+            top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
+
+            # 🔹 Progress bar color
+            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
+
+            # 🔹 Internship Card
             html_card = f"""
-<div class="internship-card {'top-match' if i == 0 else ''}">
-{top_badge_html}
-<h4 style="color:#ff9068;">💼 {row['Role']}</h4>
-<p style="color:#aaa;">🏢 {row['Company Name']}</p>
-<p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
-<p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
-<p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
-<p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
-<p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
-<div class="progress-bar-bg">
-<div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
-{score_percentage}% {t('Match')}
-</div>
-</div>
-{apply_button_html}
-</div>
-"""
+            <div class="internship-card {'top-match' if i == 0 else ''}">
+            {top_badge_html}
+            <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
+            <p style="color:#aaa;">🏢 {row['Company Name']}</p>
+            <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
+            <p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
+            <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
+            <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
+            <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
+            <div class="progress-bar-bg">
+                <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
+                {score_percentage}% {t('Match')}
+                </div>
+            </div>
+            {apply_button_html}
+            </div>
+            """
             col.markdown(html_card, unsafe_allow_html=True)
 
 else:
