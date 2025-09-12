@@ -1,43 +1,47 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
-import tensorflow as tf
+import ast
 import re
-from googletrans import Translator   # for Hindi translation
+import difflib
+from deep_translator import GoogleTranslator
+import tensorflow as tf
+import joblib
 
-# -------------------------
-# Load trained components
-# -------------------------
-model = tf.keras.models.load_model("internship_model.keras")
-le_location = joblib.load("le_location.pkl")
-le_company = joblib.load("le_company.pkl")
-scaler = joblib.load("scaler.pkl")
+# ------------------- TRANSLATION SETUP -------------------
+supported_languages = {
+    "English": "en", "Assamese": "as", "Bengali": "bn", "Bodo": "brx", "Dogri": "doi",
+    "Gujarati": "gu", "Hindi": "hi", "Kannada": "kn", "Kashmiri": "ks", "Konkani": "kok",
+    "Maithili": "mai", "Malayalam": "ml", "Manipuri": "mni", "Marathi": "mr", "Nepali": "ne",
+    "Odia": "or", "Punjabi": "pa", "Sanskrit": "sa", "Santali": "sat", "Sindhi": "sd",
+    "Tamil": "ta", "Telugu": "te", "Urdu": "ur"
+}
 
-translator = Translator()
+PERKS_BENEFITS = [
+    "Certificate", "Letter of Recommendation", "Flexible Work Hours",
+    "5 Days a Week", "Job Offer", "Informal Dress Code",
+    "Free Snacks & Beverages", "Free Snacks", "Free Beverages",
+    "Work From Home", "WFH", "Remote Work", "Health Insurance",
+    "Performance Bonus", "Team Outings", "Training & Development",
+    "Casual Dress Code", "Travel Reimbursement"
+]
 
-# -------------------------
-# Utility Functions
-# -------------------------
+# ------------------- CLEANING FUNCTIONS -------------------
 def clean_location(loc_str):
     if pd.isna(loc_str):
         return ""
     return loc_str.strip("()").replace("'", "")
 
-def safe_encode(encoder, value, default="Unknown"):
-    """Safely encode a label with fallback."""
-    if value in encoder.classes_:
-        return encoder.transform([value])[0]
-    else:
-        if default not in encoder.classes_:
-            encoder.classes_ = np.append(encoder.classes_, default)
-        return encoder.transform([default])[0]
+def parse_duration(dur):
+    if pd.isna(dur):
+        return 0
+    match = re.search(r"(\d+)", str(dur))
+    return int(match.group(1)) if match else 0
 
 def parse_stipend(stipend):
-    """Convert stipend string to integer (average if range)."""
     if pd.isna(stipend) or "Unpaid" in str(stipend):
         return 0
-    nums = re.findall(r"\d+", str(stipend).replace(",", ""))
+    nums = re.findall(r"\d+", stipend.replace(",", ""))
     if len(nums) == 1:
         return int(nums[0])
     elif len(nums) == 2:
@@ -46,103 +50,157 @@ def parse_stipend(stipend):
 
 def parse_skills(sk):
     if pd.isna(sk):
-        return []
+        return [], []
     try:
-        return eval(sk)
+        items = ast.literal_eval(sk)
+        if not isinstance(items, list):
+            items = [items]
     except:
-        return [sk]
+        items = [sk]
 
-def filter_internships(df, profile):
-    df_filtered = df.copy()
+    skills, perks = [], []
+    for item in items:
+        item_lower = item.lower()
+        matched_perk = any(
+            difflib.SequenceMatcher(None, item_lower, p.lower()).ratio() > 0.7 or p.lower() in item_lower
+            for p in PERKS_BENEFITS
+        )
+        if matched_perk:
+            perks.append(item)
+        else:
+            skills.append(item)
+    return skills, perks
 
-    # Location filter
-    if profile["location"]:
-        pattern = "|".join([re.escape(loc) for loc in profile["location"]])
-        df_filtered = df_filtered[df_filtered["Location"].str.contains(pattern, case=False, na=False)]
+# ------------------- STREAMLIT CONFIG -------------------
+st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
 
-    # Skills filter
-    def skills_match(row_skills, candidate_skills):
-        if not candidate_skills:
-            return True
-        row_skills_lower = [s.lower() for s in row_skills]
-        return any(skill.lower() in row_skills_lower for skill in candidate_skills)
+st.markdown("""<style>
+    body { background-color: #0e1117; color: #e0e0e0; }
+    .stApp { background-color: #0e1117; }
+    .internship-card {
+        padding: 20px; border-radius: 16px; background: #161a23;
+        margin-bottom: 20px; transition: all 0.3s ease; position: relative;
+    }
+    .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
+    .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
+    .top-badge {
+        position: absolute; top: 10px; right: 10px;
+        background: linear-gradient(45deg, #FFD700, #FFA500);
+        color: black; font-weight: bold; padding: 4px 10px;
+        border-radius: 12px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px;
+             font-size: 12px; background-color: #3B82F6; color: white; }
+    .perk-badge { background-color: #8B5CF6; }
+    .apply-button {
+        background-color: #ff4b4b; color: white !important; padding: 10px 20px;
+        border-radius: 12px; font-weight: bold; text-decoration: none;
+        display: inline-block; margin-top: 12px; box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
+        transition: all 0.3s ease;
+    }
+    .apply-button:hover {
+        background-color: #e63b3b;
+        box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
+        transform: scale(1.05);
+    }
+    .apply-btn-container { text-align: center; margin-top: 10px; }
+</style>""", unsafe_allow_html=True)
 
-    df_filtered["SkillsMatch"] = df_filtered["Skills"].apply(
-        lambda x: skills_match(x, profile["skills"])
-    )
-    return df_filtered[df_filtered["SkillsMatch"]]
+st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</p>", unsafe_allow_html=True)
 
-# -------------------------
-# Load Data
-# -------------------------
-data = pd.read_csv("internship_data.csv")
-data["Location"] = data["Location"].apply(clean_location)
-data["Skills"] = data["Skills"].apply(parse_skills)
-data["Stipend"] = data["Stipend"].apply(parse_stipend).astype(int)  # ✅ ensure numeric
+# ------------------- LOAD DATA -------------------
+@st.cache_data
+def load_data():
+    df = pd.read_csv("internship_data.csv")
+    df["Location"] = df["Location"].apply(clean_location)
+    df["Duration"] = df["Duration"].apply(parse_duration)
+    df["Stipend"] = df["Stipend"].apply(parse_stipend)
+    df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
+    if "Education" not in df.columns:
+        df["Education"] = "Graduation"
+    return df
 
-# Extract unique cities & skills for dropdowns
-all_cities = sorted(set(sum([loc.split(",") for loc in data["Location"].tolist()], [])))
-all_cities = [city.strip() for city in all_cities if city.strip() != ""]
-all_skills = sorted(set(sum(data["Skills"].tolist(), [])))
+data = load_data()
 
-# -------------------------
-# Streamlit UI
-# -------------------------
-st.set_page_config(page_title="InternAI - Internship Recommendation", layout="wide")
+# ------------------- LOAD MODEL -------------------
+@st.cache_resource
+def load_model():
+    model = tf.keras.models.load_model("internship_model.keras")  # Your trained ANN model
+    scaler = joblib.load("scaler.pkl")              # If you saved preprocessing
+    encoder = joblib.load("encoder.pkl")            # If categorical encoding was used
+    return model, scaler, encoder
 
-st.sidebar.title("🦁 Candidate Profile")
+model, scaler, encoder = load_model()
 
-language = st.sidebar.selectbox("🌐 Select Language", ["English", "Hindi"])
-preferred_location = st.sidebar.multiselect("📍 Preferred Location(s)", options=all_cities)
-skills = st.sidebar.multiselect("🛠 Skills", options=all_skills, help="Select the skills you know")
-education = st.sidebar.selectbox("🎓 Education", ["High School", "Graduation", "Post-Graduation"])
-min_stipend = st.sidebar.slider("💰 Minimum Stipend (₹/month)", 0, 50000, 5000, step=1000)
+# ------------------- SIDEBAR -------------------
+st.sidebar.header("🧑 Candidate Profile")
+selected_language = st.sidebar.selectbox("🌐 Select Language", list(supported_languages.keys()), index=0)
+target_lang = supported_languages[selected_language]
 
-# -------------------------
-# Recommendation Logic
-# -------------------------
-if st.sidebar.button("🚀 Get AI Recommendations"):
+def t(text):
+    if target_lang == "en": return text
+    try: return GoogleTranslator(source='auto', target=target_lang).translate(text)
+    except: return text
+
+available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
+available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
+
+candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
+candidate_skills = st.sidebar.multiselect(t("🛠 Skills"), options=available_skills, default=[])
+candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
+min_stipend = st.sidebar.slider(t("💰 Minimum Stipend (₹/month)"), 0, 50000, 0, step=500)
+
+predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
+
+# ------------------- PREDICTIONS -------------------
+if predict_button:
     candidate_profile = {
-        "education": education,
-        "skills": skills,
-        "location": preferred_location
+        "education": candidate_education,
+        "skills": candidate_skills,
+        "location": candidate_location,
+        "stipend": min_stipend
     }
 
-    filtered = filter_internships(data, candidate_profile)
-    filtered = filtered[filtered["Stipend"] >= min_stipend]  # ✅ safe now
+    # Convert profile into feature vector for ML model
+    try:
+        X_input = pd.DataFrame([candidate_profile])
+        X_input_enc = encoder.transform(X_input) if encoder else X_input
+        X_input_scaled = scaler.transform(X_input_enc) if scaler else X_input_enc
+        y_pred = model.predict(X_input_scaled)[0][0]  # Churn prob / Match prob
+        st.success(f"✨ AI Match Probability: **{y_pred:.2%}**")
+    except Exception as e:
+        st.error(f"⚠️ Error using model: {e}")
 
-    if filtered.empty:
-        st.warning("⚠️ No internships match your criteria. Try adjusting filters.")
+    # Existing filtering logic for internship display
+    filtered_data = data[data["Stipend"] >= min_stipend]
+    if not candidate_location:
+        filtered_data = filtered_data
     else:
-        # Encode safely
-        filtered["Location_enc"] = [safe_encode(le_location, l) for l in filtered["Location"]]
-        filtered["Company_enc"] = [safe_encode(le_company, c) for c in filtered["Company Name"]]
+        pattern = "|".join(candidate_location)
+        filtered_data = filtered_data[filtered_data["Location"].str.contains(pattern, case=False, na=False)]
 
-        # Prepare features
-        X = filtered[["Location_enc", "Stipend", "Duration"]]
-        X = scaler.transform(X)
+    if filtered_data.empty:
+        st.warning(t("😔 No matching internships found! Try changing filters."))
+    else:
+        st.subheader(t("🏆 Top Internship Recommendations"))
+        cols = st.columns(2)
+        for i, (_, row) in enumerate(filtered_data.head(6).iterrows()):
+            col = cols[i % 2]
+            apply_button_html = f'<div class="apply-btn-container"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>' if pd.notna(row["Website Link"]) else ""
+            html_card = f"""
+<div class="internship-card {'top-match' if i==0 else ''}">
+<h4 style="color:#ff9068;">💼 {row['Role']}</h4>
+<p style="color:#aaa;">🏢 {row['Company Name']}</p>
+<p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
+<p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
+<p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
+<p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
+<p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
+{apply_button_html}
+</div>"""
+            col.markdown(html_card, unsafe_allow_html=True)
 
-        # Predict
-        scores = model.predict(X).flatten()
-        filtered["Score"] = scores
-
-        # Top 5
-        top_internships = filtered.sort_values(by="Score", ascending=False).head(5)
-
-        st.title("🎓 InternAI - Internship Recommendation")
-        st.markdown("### Find your **Top 5 Internships** with AI 🚀")
-
-        for idx, row in top_internships.iterrows():
-            details = f"""
-            ---
-            **💼 Internship:** {row['Role']} at **{row['Company Name']}**  
-            **📍 Location:** {row['Location']}  
-            **💰 Stipend:** ₹{row['Stipend']} / month  
-            **⏳ Duration:** {row['Duration']} months  
-            **🛠 Skills Required:** {", ".join(row['Skills']) if row['Skills'] else "Not specified"}  
-            **🔗 Apply Here:** [{row['Website Link']}]({row['Website Link']})  
-            """
-            # Translate if Hindi is selected
-            if language == "Hindi":
-                details = translator.translate(details, src="en", dest="hi").text
-            st.markdown(details)
+else:
+    st.info(t("👈 Fill in your preferences and click **Get AI Recommendations** to see results."))
