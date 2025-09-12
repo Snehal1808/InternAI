@@ -91,6 +91,7 @@ def filter_internships(df, profile):
 # ------------------- STREAMLIT CONFIG -------------------
 st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
 
+# ------------------- CUSTOM STYLING -------------------
 st.markdown("""
     <style>
         body { background-color: #0e1117; color: #e0e0e0; }
@@ -108,10 +109,10 @@ st.markdown("""
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
 
-        /* 🔥 UPDATED APPLY BUTTON STYLE */
+        /* 🔥 Centered Orangish Apply Button */
         .apply-button {
-            background-color: #ff4b4b; /* Streamlit-like orangish-red */
-            color: white !important;   /* Keep text/URL white */
+            background-color: #ff4b4b;
+            color: white !important;
             padding: 10px 20px;
             border-radius: 12px;
             font-weight: bold;
@@ -122,7 +123,7 @@ st.markdown("""
             transition: all 0.3s ease;
         }
         .apply-button:hover {
-            background-color: #e63b3b; /* Slightly darker on hover */
+            background-color: #e63b3b;
             box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
             transform: scale(1.05);
         }
@@ -202,8 +203,12 @@ if predict_button:
 
                 apply_button_html = ""
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                    apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
-                    
+                    apply_button_html = f'''
+                    <div style="text-align:center; margin-top:10px;">
+                        <a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>
+                    </div>
+                    '''
+
                 col.markdown(f"""
                 <div class="internship-card {highlight_class}">
                     <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
