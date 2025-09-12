@@ -215,43 +215,44 @@ if predict_button:
         X_scaled = scaler.transform(X)
         filtered_data["Score"] = model.predict(X_scaled).flatten()
 
-        # Top 5 internships
-        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
+        # Sort by score
+        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(10)
         max_score = top_internships["Score"].max()
 
-        st.subheader(t("🏆 Top Internship Recommendations"))
+        st.subheader(t("🏆 Your Matches"))
 
-        cols = st.columns(2)
         for i, (_, row) in enumerate(top_internships.iterrows()):
             score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
-            col = cols[i % 2]
+            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
+
+            top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
+
+            skills_html = " ".join([f'<span class="badge">{skill}</span>' for skill in row["Skills"]])
+            perks_html = " ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row["Perks"]])
 
             apply_button_html = ""
             if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
-
-            top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
-            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
+                apply_button_html = f'<div class="apply-btn-container"><a href="{row["Website Link"]}" target="_blank" class="apply-button">Apply Now 🚀</a></div>'
 
             html_card = f"""
             <div class="internship-card {'top-match' if i == 0 else ''}">
-            {top_badge_html}
-            <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
-            <p style="color:#aaa;">🏢 {row['Company Name']}</p>
-            <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
-            <p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
-            <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
-            <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
-            <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
-            <div class="progress-bar-bg">
-                <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
-                {score_percentage}% {t('Match')}
+                {top_badge_html}
+                <h3 style="color:#fff;">{row['Role']}</h3>
+                <p style="color:#bbb;">🏢 {row['Company Name']}</p>
+                <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
+                <p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
+                <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
+                <p>🛠 <b>{t('Required Skills')}:</b> {skills_html}</p>
+                <p>🎁 <b>{t('Perks & Benefits')}:</b> {perks_html}</p>
+                <div class="progress-bar-bg">
+                    <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
+                        {score_percentage}% {t('Match')}
+                    </div>
                 </div>
-            </div>
-            {apply_button_html}
+                {apply_button_html}
             </div>
             """
-            col.markdown(html_card, unsafe_allow_html=True)
+            st.markdown(html_card, unsafe_allow_html=True)
 
         # ------------------- CSV DOWNLOAD -------------------
         csv_buffer = io.StringIO()
@@ -262,6 +263,5 @@ if predict_button:
             file_name="top_internships.csv",
             mime="text/csv"
         )
-
 else:
     st.info(t("👈 Fill in your preferences and click **Get AI Recommendations** to see results."))
