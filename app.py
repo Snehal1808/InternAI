@@ -30,7 +30,8 @@ PERKS_BENEFITS = [
 def clean_location(loc_str):
     if pd.isna(loc_str):
         return ""
-    return loc_str.strip("()").replace("'", "")
+    # take only first city if multiple listed
+    return loc_str.strip("()").replace("'", "").split(",")[0].strip()
 
 def parse_duration(dur):
     if pd.isna(dur):
@@ -41,7 +42,7 @@ def parse_duration(dur):
 def parse_stipend(stipend):
     if pd.isna(stipend) or "Unpaid" in str(stipend):
         return 0
-    nums = re.findall(r"\d+", stipend.replace(",", ""))
+    nums = re.findall(r"\d+", str(stipend).replace(",", ""))
     if len(nums) == 1:
         return int(nums[0])
     elif len(nums) == 2:
@@ -84,8 +85,11 @@ model, le_location, le_company, scaler = load_model()
 
 # ------------------- FILTER FUNCTION -------------------
 def filter_internships(df, profile):
-    pattern = "|".join([re.escape(loc) for loc in profile["location"]])
-    df_filtered = df[df["Location"].str.contains(pattern, case=False, na=False)] if pattern else df.copy()
+    if profile["location"]:
+        pattern = "|".join([re.escape(loc) for loc in profile["location"]])
+        df_filtered = df[df["Location"].str.contains(pattern, case=False, na=False)]
+    else:
+        df_filtered = df.copy()
 
     def skills_match(row_skills, candidate_skills):
         if not candidate_skills:
@@ -154,8 +158,6 @@ st.markdown("""
 st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</p>", unsafe_allow_html=True)
 
-
-
 # ------------------- LOAD DATA -------------------
 @st.cache_data
 def load_data():
@@ -183,7 +185,7 @@ def t(text):
     except:
         return text
 
-available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
+available_locations = sorted(data["Location"].dropna().unique())
 available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
 
 candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), options=available_locations, default=[])
@@ -197,7 +199,7 @@ predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
 if predict_button:
     candidate_profile = {"education": candidate_education, "skills": candidate_skills, "location": candidate_location}
     filtered_data = filter_internships(data, candidate_profile)
-    filtered_data = filtered_data[filtered_data["Stipend"] >= min_stipend]
+    filtered_data = filtered_data[filtered_data["Stipend"].astype(int) >= int(min_stipend)]
 
     if filtered_data.empty:
         st.warning(t("😔 No matching internships found! Try changing filters."))
@@ -206,12 +208,12 @@ if predict_button:
         try:
             filtered_data["Location_enc"] = le_location.transform(filtered_data["Location"])
         except:
-            filtered_data["Location_enc"] = 0  # fallback for unseen location
+            filtered_data["Location_enc"] = 0
 
         try:
             filtered_data["Company_enc"] = le_company.transform(filtered_data["Company Name"])
         except:
-            filtered_data["Company_enc"] = 0  # fallback for unseen company
+            filtered_data["Company_enc"] = 0
 
         X = filtered_data[["Location_enc", "Stipend", "Duration"]]
         X_scaled = scaler.transform(X)
@@ -228,11 +230,14 @@ if predict_button:
         cols = st.columns(2)
         for i, (_, row) in enumerate(top_internships.iterrows()):
             score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
+            bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
             col = cols[i % 2]
 
+            top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
+
             apply_button_html = ""
-            if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
+            if pd.notna(row.get("Website Link")) and str(row["Website Link"]).strip():
+                apply_button_html = f'<div class="apply-btn-container"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
 
             html_card = f"""
 <div class="internship-card {'top-match' if i == 0 else ''}">
