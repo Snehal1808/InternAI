@@ -1,6 +1,164 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import difflib
+import joblib
+import tensorflow as tf
+from deep_translator import GoogleTranslator
+
+# ------------------- PAGE CONFIG -------------------
+st.set_page_config(page_title="AI Internship Predictor", layout="wide")
+
+# ------------------- CUSTOM CSS -------------------
+st.markdown("""
+    <style>
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            justify-content: center;
+            align-items: stretch;
+        }
+        .card {
+            background: #1E1E1E;
+            color: #FFFFFF;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 220px;
+        }
+        .card h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #4CC9F0;
+        }
+        .card p {
+            font-size: 14px;
+            margin: 4px 0;
+        }
+        .score-bar {
+            height: 8px;
+            background: #2A2A2A;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CC9F0, #4361EE);
+        }
+        .see-more-btn {
+            background: #4CC9F0;
+            color: black;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            margin: 20px auto;
+            display: block;
+            width: fit-content;
+        }
+        .see-more-btn:hover {
+            background: #4895EF;
+            color: white;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# ------------------- LOAD DATA -------------------
+@st.cache_data
+def load_data():
+    # Replace with your real dataset
+    data = pd.DataFrame({
+        "Title": [
+            "Data Science Intern", "Web Development Intern", "AI Research Intern",
+            "Business Analyst Intern", "Cybersecurity Intern", "Cloud Intern",
+            "Blockchain Intern", "DevOps Intern", "UI/UX Intern", "Game Dev Intern"
+        ],
+        "Company": [
+            "Google", "Microsoft", "OpenAI",
+            "Deloitte", "IBM", "AWS",
+            "Polygon", "RedHat", "Figma", "Ubisoft"
+        ],
+        "Location": [
+            "Bangalore", "Hyderabad", "San Francisco",
+            "Mumbai", "Delhi", "Remote",
+            "Remote", "Pune", "Remote", "Montreal"
+        ],
+        "Score": np.random.uniform(60, 100, 10)
+    })
+    return data
+
+data = load_data()
+
+# ------------------- SIDEBAR -------------------
+st.sidebar.title("🔍 Internship Predictor")
+st.sidebar.write("Fill details and get AI-powered internship suggestions.")
+
+user_field = st.sidebar.text_input("Enter your field of interest")
+btn = st.sidebar.button("✨ Get AI Predictions")
+
+# ------------------- MAIN APP -------------------
+st.title("🚀 AI Internship Predictor")
+st.write("Discover the top internships tailored to your profile.")
+
+if btn:
+    # Match field of interest
+    matches = [i for i in data["Title"] if difflib.SequenceMatcher(None, user_field.lower(), i.lower()).ratio() > 0.3]
+    if matches:
+        filtered_data = data[data["Title"].isin(matches)]
+    else:
+        filtered_data = data
+
+    # Sort by score
+    filtered_data = filtered_data.sort_values(by="Score", ascending=False).reset_index(drop=True)
+
+    # Pagination
+    if "page" not in st.session_state:
+        st.session_state.page = 0
+
+    per_page = 6
+    start = st.session_state.page * per_page
+    end = start + per_page
+    page_data = filtered_data.iloc[start:end]
+
+    st.markdown('<div class="cards-container">', unsafe_allow_html=True)
+
+    max_score = filtered_data["Score"].max()
+    for _, row in page_data.iterrows():
+        score_percent = int((row["Score"] / max_score) * 100)
+
+        html_card = f"""
+        <div class="card">
+            <div>
+                <h3>{row['Title']}</h3>
+                <p><b>Company:</b> {row['Company']}</p>
+                <p><b>Location:</b> {row['Location']}</p>
+            </div>
+            <div>
+                <p><b>Score:</b> {row['Score']:.1f}</p>
+                <div class="score-bar">
+                    <div class="score-fill" style="width: {score_percent}%"></div>
+                </div>
+            </div>
+        </div>
+        """
+        st.markdown(html_card, unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # See More button
+    if end < len(filtered_data):
+        if st.button("See More ➡️"):
+            st.session_state.page += 1
+            st.rerun()
+import streamlit as st
+import pandas as pd
+import numpy as np
 import ast
 import re
 import difflib
