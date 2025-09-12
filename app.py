@@ -115,7 +115,7 @@ def filter_internships(df, profile):
     return df_filtered[df_filtered["SkillsMatch"]].copy()
 
 # ------------------- SKILLS RADAR CHART -------------------
-def plot_skills_radar(required_skills, candidate_skills):
+def plot_skills_radar(required_skills, candidate_skills, chart_key):
     if not required_skills:
         return
     all_skills = list(set(required_skills + candidate_skills))
@@ -143,7 +143,7 @@ def plot_skills_radar(required_skills, candidate_skills):
         template="plotly_dark",
         title="Skills Match Radar"
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=chart_key)
 
 # ------------------- DEADLINE ALERT -------------------
 def check_deadline(deadline_str):
@@ -275,8 +275,8 @@ if predict_button:
             """
             col.markdown(html_card, unsafe_allow_html=True)
 
-            # Skills Radar Chart
-            plot_skills_radar(row['Skills'], candidate_skills)
+            # Skills Radar Chart with unique key
+            plot_skills_radar(row['Skills'], candidate_skills, chart_key=f"radar_{i}")
 
             # Recommendation Explanation
             skills_match_ratio = row["SkillMatchRatio"]
