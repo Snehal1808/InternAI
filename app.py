@@ -207,7 +207,6 @@ min_stipend = st.sidebar.slider(t("💰 Minimum Stipend (₹/month)"), 0, 50000,
 predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
 
 # ------------------- PREDICTIONS -------------------
-# ------------------- PREDICTIONS -------------------
 if predict_button:
     candidate_profile = {"education": candidate_education, "skills": candidate_skills, "location": candidate_location}
     filtered_data = filter_internships(data, candidate_profile)
@@ -275,9 +274,6 @@ if predict_button:
             </div>
             """
             col.markdown(html_card, unsafe_allow_html=True)
-
-            # Skills Radar Chart with unique key
-            plot_skills_radar(row['Skills'], candidate_skills, chart_key=f"radar_{i}")
 
 else:
     st.info(t("👈 Fill in your preferences and click **Get AI Recommendations** to see results."))
