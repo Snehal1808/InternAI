@@ -102,53 +102,21 @@ def filter_internships(df, profile):
 # ------------------- STREAMLIT CONFIG -------------------
 st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
 
+# ------------------- CSS STYLING -------------------
 st.markdown("""
     <style>
         body { background-color: #0e1117; color: #e0e0e0; }
         .stApp { background-color: #0e1117; }
-        .internship-card {
-            padding: 20px;
-            border-radius: 16px;
-            background: #161a23;
-            margin-bottom: 20px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
+        .internship-card { padding: 20px; border-radius: 16px; background: #161a23; margin-bottom: 20px; transition: all 0.3s ease; position: relative; }
         .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
         .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
-        .top-badge {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: linear-gradient(45deg, #FFD700, #FFA500);
-            color: black;
-            font-weight: bold;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-        }
+        .top-badge { position: absolute; top: 10px; right: 10px; background: linear-gradient(45deg, #FFD700, #FFA500); color: black; font-weight: bold; padding: 4px 10px; border-radius: 12px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
         .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
+        .progress-bar-fill { height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px; width:0; transition: width 1s; }
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
-        .apply-button {
-            background-color: #ff4b4b;
-            color: white !important;
-            padding: 10px 20px;
-            border-radius: 12px;
-            font-weight: bold;
-            text-decoration: none;
-            display: inline-block;
-            margin-top: 12px;
-            box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
-            transition: all 0.3s ease;
-        }
-        .apply-button:hover {
-            background-color: #e63b3b;
-            box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
-            transform: scale(1.05);
-        }
-        .apply-btn-container { text-align: center; margin-top: 10px; }
+        .apply-button { background-color: #ff4b4b; color: white !important; padding: 10px 20px; border-radius: 12px; font-weight: bold; text-decoration: none; display: inline-block; margin-top: 12px; box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3); transition: all 0.3s ease; }
+        .apply-button:hover { background-color: #e63b3b; box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5); transform: scale(1.05); }
     </style>
 """, unsafe_allow_html=True)
 
@@ -174,6 +142,7 @@ st.sidebar.header("🧑 Candidate Profile")
 selected_language = st.sidebar.selectbox("🌐 Select Language", list(supported_languages.keys()), index=0)
 target_lang = supported_languages[selected_language]
 
+@st.cache
 def t(text):
     if target_lang == "en":
         return text
@@ -189,6 +158,7 @@ candidate_location = st.sidebar.multiselect(t("📍 Preferred Location(s)"), opt
 candidate_skills = st.sidebar.multiselect(t("🛠 Skills"), options=available_skills, default=[])
 candidate_education = st.sidebar.selectbox(t("🎓 Education"), ["Class 10", "Class 12", "Diploma", "Graduation"], index=3)
 min_stipend = st.sidebar.slider(t("💰 Minimum Stipend (₹/month)"), 0, 50000, 0, step=500)
+top_n = st.sidebar.slider(t("🔝 Number of Top Internships to Show"), 1, 10, 5)
 
 predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
 
@@ -214,10 +184,8 @@ if predict_button:
         X = filtered_data[["Location_enc", "Stipend", "Duration"]]
         X_scaled = scaler.transform(X)
 
-        scores = model.predict(X_scaled).flatten()
-        filtered_data["Score"] = scores
-
-        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
+        filtered_data["Score"] = model.predict(X_scaled).flatten()
+        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(top_n)
         max_score = top_internships["Score"].max()
 
         st.subheader(t("🏆 Top Internship Recommendations"))
@@ -245,7 +213,7 @@ if predict_button:
             <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
             <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
             <div class="progress-bar-bg">
-                <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
+                <div class="progress-bar-fill" style="background-color:{bar_color}; width:{score_percentage}%;">
                 {score_percentage}% {t('Match')}
                 </div>
             </div>
@@ -257,11 +225,9 @@ if predict_button:
         # ------------------- CSV DOWNLOAD -------------------
         csv_buffer = io.StringIO()
         top_internships.to_csv(csv_buffer, index=False)
-        csv_data = csv_buffer.getvalue()
-
         st.download_button(
             label=t("💾 Download Top Internships as CSV"),
-            data=csv_data,
+            data=csv_buffer.getvalue(),
             file_name="top_internships.csv",
             mime="text/csv"
         )
