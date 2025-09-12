@@ -4,6 +4,8 @@ import numpy as np
 import ast
 import re
 import difflib
+import joblib
+import tensorflow as tf
 from deep_translator import GoogleTranslator
 
 # ------------------- TRANSLATION SETUP -------------------
@@ -28,6 +30,7 @@ PERKS_BENEFITS = [
 def clean_location(loc_str):
     if pd.isna(loc_str):
         return ""
+    # take only first city if multiple listed
     return loc_str.strip("()").replace("'", "").split(",")[0].strip()
 
 def parse_duration(dur):
@@ -68,6 +71,17 @@ def parse_skills(sk):
         else:
             skills.append(item)
     return skills, perks
+
+# ------------------- LOAD MODEL + ENCODERS -------------------
+@st.cache_resource
+def load_model():
+    model = tf.keras.models.load_model("internship_model.keras")
+    le_location = joblib.load("le_location.pkl")
+    le_company = joblib.load("le_company.pkl")
+    scaler = joblib.load("scaler.pkl")
+    return model, le_location, le_company, scaler
+
+model, le_location, le_company, scaler = load_model()
 
 # ------------------- FILTER FUNCTION -------------------
 def filter_internships(df, profile):
@@ -190,13 +204,27 @@ if predict_button:
     if filtered_data.empty:
         st.warning(t("😔 No matching internships found! Try changing filters."))
     else:
-        filtered_data["Score"] = (
-            filtered_data["Stipend"] * 0.4 +
-            filtered_data["Duration"] * 0.2 +
-            filtered_data["SkillsMatch"].astype(int) * 0.4
-        )
+        # --- Encode + Scale Features ---
+        try:
+            filtered_data["Location_enc"] = le_location.transform(filtered_data["Location"])
+        except:
+            filtered_data["Location_enc"] = 0
+
+        try:
+            filtered_data["Company_enc"] = le_company.transform(filtered_data["Company Name"])
+        except:
+            filtered_data["Company_enc"] = 0
+
+        X = filtered_data[["Location_enc", "Stipend", "Duration"]]
+        X_scaled = scaler.transform(X)
+
+        # --- Model Predictions ---
+        scores = model.predict(X_scaled).flatten()
+        filtered_data["Score"] = scores
+
         top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
         max_score = top_internships["Score"].max()
+
         st.subheader(t("🏆 Top Internship Recommendations"))
 
         cols = st.columns(2)
@@ -204,6 +232,7 @@ if predict_button:
             score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
             bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
             col = cols[i % 2]
+
             top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
 
             apply_button_html = ""
