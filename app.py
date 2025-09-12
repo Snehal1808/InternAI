@@ -108,16 +108,22 @@ st.markdown("""
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
         .apply-button {
-            background-color: #3B82F6;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
             color: white;
             padding: 10px 20px;
-            border-radius: 10px;
+            border-radius: 12px;
             font-weight: bold;
             text-decoration: none;
             display: inline-block;
             margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(22, 197, 94, 0.3);
+            transition: all 0.3s ease;
         }
-        .apply-button:hover { background-color: #2563EB; }
+        .apply-button:hover {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            box-shadow: 0 6px 15px rgba(22, 197, 94, 0.5);
+            transform: scale(1.05);
+        }
     </style>
 """, unsafe_allow_html=True)
 
