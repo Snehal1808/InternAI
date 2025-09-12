@@ -253,6 +253,16 @@ if predict_button:
             </div>
             """
             col.markdown(html_card, unsafe_allow_html=True)
+            # Animated Progress Bar
+            score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
+            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
+            progress_text = col.empty()
+            progress_bar = col.progress(0)
+
+            for pct in range(score_percentage + 1):
+                progress_bar.progress(pct)
+                progress_text.markdown(f"<p style='text-align:center; color:{bar_color}; font-weight:bold;'>{pct}% {t('Match')}</p>", unsafe_allow_html=True)
+                time.sleep(0.01)
 
         # ------------------- CSV DOWNLOAD -------------------
         csv_buffer = io.StringIO()
