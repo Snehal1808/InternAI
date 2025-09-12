@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import ast
 import re
+import difflib
 from deep_translator import GoogleTranslator
 
 # ------------------- TRANSLATION SETUP -------------------
@@ -16,7 +17,9 @@ supported_languages = {
 
 PERKS_BENEFITS = [
     "Certificate", "Letter of Recommendation", "Flexible Work Hours",
-    "5 Days a Week", "Job Offer", "Informal Dress Code", "Free snacks & beverages"
+    "5 Days a Week", "Job Offer", "Informal Dress Code",
+    "Free Snacks & Beverages", "Work From Home", "Health Insurance",
+    "Performance Bonus", "Training & Development", "Team Outings"
 ]
 
 # ------------------- CLEANING FUNCTIONS -------------------
@@ -53,7 +56,13 @@ def parse_skills(sk):
 
     skills, perks = [], []
     for item in items:
-        if any(p.lower() in item.lower() for p in PERKS_BENEFITS):
+        # Fuzzy match to perks list (case-insensitive, partial matching)
+        matched_perk = any(
+            difflib.SequenceMatcher(None, item.lower(), p.lower()).ratio() > 0.7 
+            or p.lower() in item.lower()
+            for p in PERKS_BENEFITS
+        )
+        if matched_perk:
             perks.append(item)
         else:
             skills.append(item)
