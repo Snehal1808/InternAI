@@ -15,7 +15,6 @@ supported_languages = {
     "Tamil": "ta", "Telugu": "te", "Urdu": "ur"
 }
 
-# ✅ Expanded Perks List
 PERKS_BENEFITS = [
     "Certificate", "Letter of Recommendation", "Flexible Work Hours",
     "5 Days a Week", "Job Offer", "Informal Dress Code",
@@ -47,7 +46,6 @@ def parse_stipend(stipend):
         return (int(nums[0]) + int(nums[1])) // 2
     return 0
 
-# ✅ Smarter Perk Parsing (fuzzy matching)
 def parse_skills(sk):
     if pd.isna(sk):
         return [], []
@@ -62,8 +60,7 @@ def parse_skills(sk):
     for item in items:
         item_lower = item.lower()
         matched_perk = any(
-            difflib.SequenceMatcher(None, item_lower, p.lower()).ratio() > 0.7 
-            or p.lower() in item_lower
+            difflib.SequenceMatcher(None, item_lower, p.lower()).ratio() > 0.7 or p.lower() in item_lower
             for p in PERKS_BENEFITS
         )
         if matched_perk:
@@ -152,7 +149,6 @@ def load_data():
     df["Duration"] = df["Duration"].apply(parse_duration)
     df["Stipend"] = df["Stipend"].apply(parse_stipend)
     df[["Skills", "Perks"]] = df["Skills"].apply(lambda x: pd.Series(parse_skills(x)))
-
     if "Education" not in df.columns:
         df["Education"] = "Graduation"
     return df
@@ -186,54 +182,50 @@ predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
 if predict_button:
     candidate_profile = {"education": candidate_education, "skills": candidate_skills, "location": candidate_location}
     filtered_data = filter_internships(data, candidate_profile)
+    filtered_data = filtered_data[filtered_data["Stipend"] >= min_stipend]
 
     if filtered_data.empty:
         st.warning(t("😔 No matching internships found! Try changing filters."))
     else:
-        filtered_data = filtered_data[filtered_data["Stipend"] >= min_stipend]
+        filtered_data["Score"] = (
+            filtered_data["Stipend"] * 0.4 +
+            filtered_data["Duration"] * 0.2 +
+            filtered_data["SkillsMatch"].astype(int) * 0.4
+        )
+        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
+        max_score = top_internships["Score"].max()
+        st.subheader(t("🏆 Top Internship Recommendations"))
 
-        if filtered_data.empty:
-            st.warning(t("😔 No internships meet your stipend requirement!"))
-        else:
-            filtered_data["Score"] = (
-                filtered_data["Stipend"]*0.4 +
-                filtered_data["Duration"]*0.2 +
-                filtered_data["SkillsMatch"].astype(int)*0.4
-            )
-            top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
-            max_score = top_internships["Score"].max()
-            st.subheader(t("🏆 Top Internship Recommendations"))
+        cols = st.columns(2)
+        for i, (_, row) in enumerate(top_internships.iterrows()):
+            score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
+            bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
+            col = cols[i % 2]
+            top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
 
-            cols = st.columns(2)
-            for i, (_, row) in enumerate(top_internships.iterrows()):
-                score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
-                bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
-                col = cols[i % 2]
+            apply_button_html = ""
+            if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
+                apply_button_html = f'<div class="apply-btn-container"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
 
-                top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
-
-                apply_button_html = ""
-                if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                    apply_button_html = f'<div class="apply-btn-container"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
-
-                col.markdown(f"""
+            html_card = f"""
 <div class="internship-card {'top-match' if i == 0 else ''}">
-    {top_badge_html}
-    <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
-    <p style="color:#aaa;">🏢 {row['Company Name']}</p>
-    <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
-    <p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
-    <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
-    <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
-    <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
-    <div class="progress-bar-bg">
-        <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
-            {score_percentage}% {t('Match')}
-        </div>
-    </div>
-    {apply_button_html}
+{top_badge_html}
+<h4 style="color:#ff9068;">💼 {row['Role']}</h4>
+<p style="color:#aaa;">🏢 {row['Company Name']}</p>
+<p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
+<p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
+<p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
+<p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
+<p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
+<div class="progress-bar-bg">
+<div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
+{score_percentage}% {t('Match')}
 </div>
-""", unsafe_allow_html=True)
+</div>
+{apply_button_html}
+</div>
+"""
+            col.markdown(html_card, unsafe_allow_html=True)
 
 else:
     st.info(t("👈 Fill in your preferences and click **Get AI Recommendations** to see results."))
