@@ -4,9 +4,9 @@ import numpy as np
 import ast
 import re
 import difflib
-from deep_translator import GoogleTranslator
-import tensorflow as tf
 import joblib
+import tensorflow as tf
+from deep_translator import GoogleTranslator
 
 # ------------------- TRANSLATION SETUP -------------------
 supported_languages = {
@@ -71,41 +71,35 @@ def parse_skills(sk):
             skills.append(item)
     return skills, perks
 
+# ------------------- LOAD MODEL + ENCODERS -------------------
+@st.cache_resource
+def load_model():
+    model = tf.keras.models.load_model("internship_model.keras")
+    le_location = joblib.load("le_location.pkl")
+    le_company = joblib.load("le_company.pkl")
+    scaler = joblib.load("scaler.pkl")
+    return model, le_location, le_company, scaler
+
+model, le_location, le_company, scaler = load_model()
+
+# ------------------- FILTER FUNCTION -------------------
+def filter_internships(df, profile):
+    pattern = "|".join([re.escape(loc) for loc in profile["location"]])
+    df_filtered = df[df["Location"].str.contains(pattern, case=False, na=False)] if pattern else df.copy()
+
+    def skills_match(row_skills, candidate_skills):
+        if not candidate_skills:
+            return 1.0
+        row_skills_lower = [s.lower() for s in row_skills]
+        matches = sum(skill.lower() in row_skills_lower for skill in candidate_skills)
+        return matches / len(candidate_skills)
+
+    df_filtered.loc[:, "SkillMatchRatio"] = df_filtered["Skills"].apply(lambda x: skills_match(x, profile["skills"]))
+    df_filtered.loc[:, "SkillsMatch"] = df_filtered["SkillMatchRatio"] >= 0.5
+    return df_filtered[df_filtered["SkillsMatch"]].copy()
+
 # ------------------- STREAMLIT CONFIG -------------------
 st.set_page_config(page_title="InternAI", page_icon="🚀", layout="wide")
-
-st.markdown("""<style>
-    body { background-color: #0e1117; color: #e0e0e0; }
-    .stApp { background-color: #0e1117; }
-    .internship-card {
-        padding: 20px; border-radius: 16px; background: #161a23;
-        margin-bottom: 20px; transition: all 0.3s ease; position: relative;
-    }
-    .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
-    .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
-    .top-badge {
-        position: absolute; top: 10px; right: 10px;
-        background: linear-gradient(45deg, #FFD700, #FFA500);
-        color: black; font-weight: bold; padding: 4px 10px;
-        border-radius: 12px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    }
-    .progress-bar-bg { background-color: #334155; border-radius: 10px; height: 18px; overflow: hidden; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px;
-             font-size: 12px; background-color: #3B82F6; color: white; }
-    .perk-badge { background-color: #8B5CF6; }
-    .apply-button {
-        background-color: #ff4b4b; color: white !important; padding: 10px 20px;
-        border-radius: 12px; font-weight: bold; text-decoration: none;
-        display: inline-block; margin-top: 12px; box-shadow: 0 4px 10px rgba(255, 75, 75, 0.3);
-        transition: all 0.3s ease;
-    }
-    .apply-button:hover {
-        background-color: #e63b3b;
-        box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
-        transform: scale(1.05);
-    }
-    .apply-btn-container { text-align: center; margin-top: 10px; }
-</style>""", unsafe_allow_html=True)
 
 st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</p>", unsafe_allow_html=True)
@@ -124,25 +118,18 @@ def load_data():
 
 data = load_data()
 
-# ------------------- LOAD MODEL -------------------
-@st.cache_resource
-def load_model():
-    model = tf.keras.models.load_model("internship_model.keras")  # Your trained ANN model
-    scaler = joblib.load("scaler.pkl")              # If you saved preprocessing
-    encoder = joblib.load("encoder.pkl")            # If categorical encoding was used
-    return model, scaler, encoder
-
-model, scaler, encoder = load_model()
-
 # ------------------- SIDEBAR -------------------
 st.sidebar.header("🧑 Candidate Profile")
 selected_language = st.sidebar.selectbox("🌐 Select Language", list(supported_languages.keys()), index=0)
 target_lang = supported_languages[selected_language]
 
 def t(text):
-    if target_lang == "en": return text
-    try: return GoogleTranslator(source='auto', target=target_lang).translate(text)
-    except: return text
+    if target_lang == "en":
+        return text
+    try:
+        return GoogleTranslator(source='auto', target=target_lang).translate(text)
+    except:
+        return text
 
 available_locations = sorted(list(set(sum([loc.split(",") for loc in data["Location"].dropna().unique()], []))))
 available_skills = sorted({skill for skills in data["Skills"] for skill in (skills if isinstance(skills, list) else [])})
@@ -156,41 +143,47 @@ predict_button = st.sidebar.button(t("🔮 Get AI Recommendations"))
 
 # ------------------- PREDICTIONS -------------------
 if predict_button:
-    candidate_profile = {
-        "education": candidate_education,
-        "skills": candidate_skills,
-        "location": candidate_location,
-        "stipend": min_stipend
-    }
-
-    # Convert profile into feature vector for ML model
-    try:
-        X_input = pd.DataFrame([candidate_profile])
-        X_input_enc = encoder.transform(X_input) if encoder else X_input
-        X_input_scaled = scaler.transform(X_input_enc) if scaler else X_input_enc
-        y_pred = model.predict(X_input_scaled)[0][0]  # Churn prob / Match prob
-        st.success(f"✨ AI Match Probability: **{y_pred:.2%}**")
-    except Exception as e:
-        st.error(f"⚠️ Error using model: {e}")
-
-    # Existing filtering logic for internship display
-    filtered_data = data[data["Stipend"] >= min_stipend]
-    if not candidate_location:
-        filtered_data = filtered_data
-    else:
-        pattern = "|".join(candidate_location)
-        filtered_data = filtered_data[filtered_data["Location"].str.contains(pattern, case=False, na=False)]
+    candidate_profile = {"education": candidate_education, "skills": candidate_skills, "location": candidate_location}
+    filtered_data = filter_internships(data, candidate_profile)
+    filtered_data = filtered_data[filtered_data["Stipend"] >= min_stipend]
 
     if filtered_data.empty:
         st.warning(t("😔 No matching internships found! Try changing filters."))
     else:
+        # --- Encode + Scale Features ---
+        try:
+            filtered_data["Location_enc"] = le_location.transform(filtered_data["Location"])
+        except:
+            filtered_data["Location_enc"] = 0  # fallback for unseen location
+
+        try:
+            filtered_data["Company_enc"] = le_company.transform(filtered_data["Company Name"])
+        except:
+            filtered_data["Company_enc"] = 0  # fallback for unseen company
+
+        X = filtered_data[["Location_enc", "Stipend", "Duration"]]
+        X_scaled = scaler.transform(X)
+
+        # --- Model Predictions ---
+        scores = model.predict(X_scaled).flatten()
+        filtered_data["Score"] = scores
+
+        top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
+        max_score = top_internships["Score"].max()
+
         st.subheader(t("🏆 Top Internship Recommendations"))
+
         cols = st.columns(2)
-        for i, (_, row) in enumerate(filtered_data.head(6).iterrows()):
+        for i, (_, row) in enumerate(top_internships.iterrows()):
+            score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
             col = cols[i % 2]
-            apply_button_html = f'<div class="apply-btn-container"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>' if pd.notna(row["Website Link"]) else ""
+
+            apply_button_html = ""
+            if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
+                apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
+
             html_card = f"""
-<div class="internship-card {'top-match' if i==0 else ''}">
+<div style="padding:20px;border-radius:16px;background:#161a23;margin-bottom:20px;position:relative;">
 <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
 <p style="color:#aaa;">🏢 {row['Company Name']}</p>
 <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
@@ -198,8 +191,14 @@ if predict_button:
 <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
 <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
 <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
+<div style="background-color:#334155;border-radius:10px;height:18px;overflow:hidden;">
+<div style="background-color:#22C55E;width:{score_percentage}%;height:100%;text-align:center;color:white;font-weight:bold;font-size:12px;line-height:18px;">
+{score_percentage}% {t('Match')}
+</div>
+</div>
 {apply_button_html}
-</div>"""
+</div>
+"""
             col.markdown(html_card, unsafe_allow_html=True)
 
 else:
