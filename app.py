@@ -230,7 +230,7 @@ if predict_button:
             if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                 apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
 
-            top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
+            top_badge_html = '<div class="top-badge">🏆 Top Match</div>' if i == 0 else ""
             bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
 
             html_card = f"""
