@@ -108,7 +108,7 @@ st.markdown("""
         .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; margin: 2px; font-size: 12px; background-color: #3B82F6; color: white; }
         .perk-badge { background-color: #8B5CF6; }
         .apply-button {
-            background: linear-gradient(135deg, #22c55e, #16a34a);
+            background: linear-gradient(135deg, #22c55e, #e0e0e0);
             color: white;
             padding: 10px 20px;
             border-radius: 12px;
