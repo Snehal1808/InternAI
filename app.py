@@ -106,13 +106,26 @@ st.markdown("""
     <style>
         body { background-color: #0e1117; color: #e0e0e0; }
         .stApp { background-color: #0e1117; }
+
+        /* Flex container for responsive cards */
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
         .internship-card {
+            flex: 1 1 45%;
+            min-width: 300px;
+            max-width: 500px;
             padding: 20px;
             border-radius: 16px;
             background: #161a23;
-            margin-bottom: 20px;
             transition: all 0.3s ease;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .internship-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.7); }
         .top-match { border: 2px solid #FFD700; box-shadow: 0 0 20px #FFD700; }
@@ -148,7 +161,11 @@ st.markdown("""
             box-shadow: 0 6px 14px rgba(255, 75, 75, 0.5);
             transform: scale(1.05);
         }
-        .apply-btn-container { text-align: center; margin-top: 10px; }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .internship-card { flex: 1 1 90%; }
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -221,14 +238,13 @@ if predict_button:
 
         st.subheader(t("🏆 Top Internship Recommendations"))
 
-        cols = st.columns(2)
+        st.markdown('<div class="cards-container">', unsafe_allow_html=True)
         for i, (_, row) in enumerate(top_internships.iterrows()):
             score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
-            col = cols[i % 2]
 
             apply_button_html = ""
             if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
-                apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
+                apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
 
             top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
             bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
@@ -248,10 +264,11 @@ if predict_button:
                 {score_percentage}% {t('Match')}
                 </div>
             </div>
-            {apply_button_html}
+            <div style="text-align:center;margin-top:10px;">{apply_button_html}</div>
             </div>
             """
-            col.markdown(html_card, unsafe_allow_html=True)
+            st.markdown(html_card, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         # ------------------- CSV DOWNLOAD -------------------
         csv_buffer = io.StringIO()
