@@ -227,4 +227,65 @@ if predict_button:
 
         # ------------------- Export CSV & PDF -------------------
         csv_data = top_internships.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download CSV of Top Internships", data=csv_data, file_name="top_internships.csv
+        st.download_button("📥 Download CSV of Top Internships", data=csv_data, file_name="top_internships.csv", mime="text/csv")
+
+        def generate_pdf(df):
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+            for idx, row in df.iterrows():
+                pdf.cell(0, 6, f"{row['Role']} at {row['Company Name']}", ln=True)
+                pdf.cell(0, 6, f"Location: {row['Location']} | Stipend: ₹{int(row['Stipend'])}/month | Duration: {row['Duration']} months", ln=True)
+                pdf.ln(2)
+            pdf_buffer = io.BytesIO()
+            pdf.output(pdf_buffer)
+            pdf_buffer.seek(0)
+            return pdf_buffer
+
+        pdf_buffer = generate_pdf(top_internships)
+        st.download_button("📄 Download PDF", pdf_buffer, "top_internships.pdf", "application/pdf")
+
+        # ------------------- DISPLAY CARDS -------------------
+        cols = st.columns(2)
+        for i, (_, row) in enumerate(top_internships.iterrows()):
+            score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
+            col = cols[i % 2]
+
+            # Apply button
+            apply_button_html = ""
+            if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
+                apply_button_html = f'<div style="text-align:center;margin-top:10px;"><a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a></div>'
+
+            # LinkedIn jobs button
+            linkedin_url = f"https://www.linkedin.com/jobs/search/?keywords={row['Role'].replace(' ', '%20')}&location={row['Location'].replace(' ', '%20')}"
+            linkedin_button = f'<div style="text-align:center;margin-top:5px;"><a href="{linkedin_url}" target="_blank" class="apply-button">🔗 LinkedIn Jobs</a></div>'
+
+            # Top badge
+            top_badge_html = '<div class="top-badge">⭐ Top Match</div>' if i == 0 else ""
+
+            # Progress bar color
+            bar_color = "#22c55e" if score_percentage >= 70 else "#facc15" if score_percentage >= 40 else "#ef4444"
+
+            html_card = f"""
+            <div class="internship-card {'top-match' if i == 0 else ''}">
+            {top_badge_html}
+            <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
+            <p style="color:#aaa;">🏢 {row['Company Name']}</p>
+            <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
+            <p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
+            <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
+            <p>🛠 <b>{t('Skills Required')}:</b> {" ".join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
+            <p>🎁 <b>{t('Perks & Benefits')}:</b> {" ".join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
+            <div class="progress-bar-bg">
+                <div style="background-color:{bar_color}; width:{score_percentage}%; height:100%; text-align:center; color:white; font-weight:bold; font-size:12px; line-height:18px;">
+                {score_percentage}% {t('Match')}
+                </div>
+            </div>
+            {apply_button_html}
+            {linkedin_button}
+            </div>
+            """
+            col.markdown(html_card, unsafe_allow_html=True)
+
+else:
+    st.info(t("👈 Fill in your preferences and click **Get AI Recommendations** to see results."))
