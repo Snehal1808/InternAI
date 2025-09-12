@@ -4,6 +4,7 @@ import numpy as np
 import joblib
 import tensorflow as tf
 import re
+from googletrans import Translator   # for Hindi translation
 
 # -------------------------
 # Load trained components
@@ -12,6 +13,8 @@ model = tf.keras.models.load_model("internship_model.keras")
 le_location = joblib.load("le_location.pkl")
 le_company = joblib.load("le_company.pkl")
 scaler = joblib.load("scaler.pkl")
+
+translator = Translator()
 
 # -------------------------
 # Utility Functions
@@ -26,10 +29,20 @@ def safe_encode(encoder, value, default="Unknown"):
     if value in encoder.classes_:
         return encoder.transform([value])[0]
     else:
-        # Handle unseen label by mapping to "Unknown"
         if default not in encoder.classes_:
             encoder.classes_ = np.append(encoder.classes_, default)
         return encoder.transform([default])[0]
+
+def parse_stipend(stipend):
+    """Convert stipend string to integer (average if range)."""
+    if pd.isna(stipend) or "Unpaid" in str(stipend):
+        return 0
+    nums = re.findall(r"\d+", str(stipend).replace(",", ""))
+    if len(nums) == 1:
+        return int(nums[0])
+    elif len(nums) == 2:
+        return (int(nums[0]) + int(nums[1])) // 2
+    return 0
 
 def parse_skills(sk):
     if pd.isna(sk):
@@ -65,6 +78,7 @@ def filter_internships(df, profile):
 data = pd.read_csv("internship_data.csv")
 data["Location"] = data["Location"].apply(clean_location)
 data["Skills"] = data["Skills"].apply(parse_skills)
+data["Stipend"] = data["Stipend"].apply(parse_stipend).astype(int)  # ✅ ensure numeric
 
 # Extract unique cities & skills for dropdowns
 all_cities = sorted(set(sum([loc.split(",") for loc in data["Location"].tolist()], [])))
@@ -95,7 +109,7 @@ if st.sidebar.button("🚀 Get AI Recommendations"):
     }
 
     filtered = filter_internships(data, candidate_profile)
-    filtered = filtered[filtered["Stipend"] >= min_stipend]
+    filtered = filtered[filtered["Stipend"] >= min_stipend]  # ✅ safe now
 
     if filtered.empty:
         st.warning("⚠️ No internships match your criteria. Try adjusting filters.")
@@ -119,7 +133,7 @@ if st.sidebar.button("🚀 Get AI Recommendations"):
         st.markdown("### Find your **Top 5 Internships** with AI 🚀")
 
         for idx, row in top_internships.iterrows():
-            st.markdown(f"""
+            details = f"""
             ---
             **💼 Internship:** {row['Role']} at **{row['Company Name']}**  
             **📍 Location:** {row['Location']}  
@@ -127,4 +141,8 @@ if st.sidebar.button("🚀 Get AI Recommendations"):
             **⏳ Duration:** {row['Duration']} months  
             **🛠 Skills Required:** {", ".join(row['Skills']) if row['Skills'] else "Not specified"}  
             **🔗 Apply Here:** [{row['Website Link']}]({row['Website Link']})  
-            """)
+            """
+            # Translate if Hindi is selected
+            if language == "Hindi":
+                details = translator.translate(details, src="en", dest="hi").text
+            st.markdown(details)
