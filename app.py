@@ -219,7 +219,8 @@ if predict_button:
             top_internships = filtered_data.sort_values(by="Score", ascending=False).head(5)
             max_score = top_internships["Score"].max()
             st.subheader(t("🏆 Top Internship Recommendations"))
-cols = st.columns(2)
+
+            cols = st.columns(2)
             for i, (_, row) in enumerate(top_internships.iterrows()):
                 score_percentage = int((row["Score"] / max_score) * 100) if max_score > 0 else 0
                 bar_color = "#16A34A" if score_percentage >= 80 else "#22C55E" if score_percentage >= 50 else "#FACC15"
