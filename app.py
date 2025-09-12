@@ -153,7 +153,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("<h1 style='text-align:center;'>🚀 InternAI</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</p>", unsafe_allow_html=True)
+st.markdown("<h2 style='text-align:center; color:#bbb;'>Find your perfect internship match using AI</h2>", unsafe_allow_html=True)
 
 # ------------------- LOAD DATA -------------------
 @st.cache_data
