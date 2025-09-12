@@ -189,15 +189,15 @@ if predict_button:
                 if pd.notna(row["Website Link"]) and str(row["Website Link"]).strip():
                     apply_button_html = f'<a href="{row["Website Link"]}" target="_blank" class="apply-button">🚀 {t("Apply Now")}</a>'
 
-                st.markdown(f"""
-                <div class="internship-card">
+                col.markdown(f"""
+                <div class="internship-card {highlight_class}">
                     <h4 style="color:#ff9068;">💼 {row['Role']}</h4>
                     <p style="color:#aaa;">🏢 {row['Company Name']}</p>
-                    <p>📍 <b>{t('Location')}:</b> {row['Location']}</p>
+                    <p>📍 <b>{t('Location')}:</b> {', '.join(shown_locs)}</p>
                     <p>💰 <b>{t('Stipend')}:</b> ₹{int(row['Stipend']):,}/month</p>
                     <p>⏳ <b>{t('Duration')}:</b> {row['Duration']} {t('months')}</p>
-                    <p>🛠 <b>{t('Skills Required')}:</b> {' '.join([f'<span class="badge">{skill}</span>' for skill in row['Skills']])}</p>
-                    <p>🎁 <b>{t('Perks & Benefits')}:</b> {' '.join([f'<span class="badge perk-badge">{perk}</span>' for perk in row['Perks']])}</p>
+                    <p>🛠 <b>{t('Skills Required')}:</b> {' '.join([f'<span class="badge tooltip" data-tip="{skill}">{skill}</span>' for skill in row['Skills']])}</p>
+                    <p>🎁 <b>{t('Perks & Benefits')}:</b> {' '.join([f'<span class="badge perk-badge tooltip" data-tip="{perk}">{perk}</span>' for perk in row['Perks']])}</p>
                     <div class="progress-bar-bg">
                         <div style="
                             background-color:{bar_color};
@@ -207,11 +207,10 @@ if predict_button:
                             color:white;
                             font-weight:bold;
                             font-size:12px;
-                            line-height:18px;">
-                            {score_percentage}% {t('Match')}
-                        </div>
+                            line-height:18px;
+                            transition: width 1.2s ease-out;
+                        ">{score_percentage}% {t('Match')}</div>
                     </div>
-                    {apply_button_html}
                 </div>
                 """, unsafe_allow_html=True)
 else:
