@@ -1,8 +1,8 @@
 # 🚀 InternAI - Smart Internship Matching System
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://intern-ai.streamlit.app/)
-
 An AI-powered internship recommendation platform achieving **personalized matching** using neural networks. Built for students to find perfect internship opportunities through intelligent skill and location matching with **22+ regional language support**.
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://intern-ai.streamlit.app/)
 
 ## ✨ Key Features
 - **AI-Powered Matching**: 3-layer neural network with feature scaling (personalized scoring)
@@ -16,6 +16,13 @@ An AI-powered internship recommendation platform achieving **personalized matchi
 ## 🚀 Try It Now!
 The app is live on Streamlit—no installation needed!
 👉 **[Launch App](https://intern-ai.streamlit.app/)**
+
+## 🖼️ Screenshots
+<img width="1918" height="889" alt="Screenshot 2025-08-06 200319" src="https://github.com/user-attachments/assets/fbb1aa1f-5ce5-4e60-b9a3-05e7ab5c59a1" />
+<img width="1907" height="891" alt="Screenshot 2025-08-06 200624" src="https://github.com/user-attachments/assets/f12c26ce-2e64-43c0-b929-d60118989700" />
+<img width="1919" height="895" alt="Screenshot 2025-08-06 200646" src="https://github.com/user-attachments/assets/f295c137-7d40-49aa-a983-6672c82a825c" />
+<img width="1917" height="875" alt="Screenshot 2025-08-06 200704" src="https://github.com/user-attachments/assets/c9bac703-132d-4d8e-b261-6c5e0f1e7a08" />
+<img width="1919" height="874" alt="Screenshot 2025-08-06 200719" src="https://github.com/user-attachments/assets/3aaaf8f9-4478-4c6d-9a49-5b18bfa7018b" />
 
 ## 🛠 Tech Stack
 | Component | Technologies |
