@@ -18,11 +18,9 @@ The app is live on Streamlit—no installation needed!
 👉 **[Launch App](https://intern-ai.streamlit.app/)**
 
 ## 🖼️ Screenshots
-<img width="1918" height="889" alt="Screenshot 2025-08-06 200319" src="https://github.com/user-attachments/assets/fbb1aa1f-5ce5-4e60-b9a3-05e7ab5c59a1" />
-<img width="1907" height="891" alt="Screenshot 2025-08-06 200624" src="https://github.com/user-attachments/assets/f12c26ce-2e64-43c0-b929-d60118989700" />
-<img width="1919" height="895" alt="Screenshot 2025-08-06 200646" src="https://github.com/user-attachments/assets/f295c137-7d40-49aa-a983-6672c82a825c" />
-<img width="1917" height="875" alt="Screenshot 2025-08-06 200704" src="https://github.com/user-attachments/assets/c9bac703-132d-4d8e-b261-6c5e0f1e7a08" />
-<img width="1919" height="874" alt="Screenshot 2025-08-06 200719" src="https://github.com/user-attachments/assets/3aaaf8f9-4478-4c6d-9a49-5b18bfa7018b" />
+<img width="1892" height="890" alt="Screenshot (260)" src="https://github.com/user-attachments/assets/59f2901c-63e2-4a17-a393-2c3db66cf46d" />
+<img width="1893" height="885" alt="Screenshot (258)" src="https://github.com/user-attachments/assets/366c623c-e230-4b25-8655-6f1269f38f0d" />
+<img width="1885" height="883" alt="Screenshot (259)" src="https://github.com/user-attachments/assets/b5e4e0bb-ac7d-490d-9006-c0cd783e45b7" />
 
 ## 🛠 Tech Stack
 | Component | Technologies |
