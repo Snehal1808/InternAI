@@ -1,5 +1,7 @@
 # 🚀 InternAI - Smart Internship Matching System
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://intern-ai.streamlit.app/)
+
 An AI-powered internship recommendation platform achieving **personalized matching** using neural networks. Built for students to find perfect internship opportunities through intelligent skill and location matching with **22+ regional language support**.
 
 ## ✨ Key Features
