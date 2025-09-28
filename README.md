@@ -28,7 +28,7 @@ InternAI is an intelligent internship recommendation system that uses machine le
 
 ```
 InternAI/
-├── app.py                    # Main Streamlit application
+├── app.py                  # Main Streamlit application
 ├── InternAI.ipynb          # Jupyter notebook for model training
 ├── internship_data.csv     # Dataset containing internship listings
 ├── internship_model.keras  # Trained neural network model
