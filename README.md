@@ -13,7 +13,7 @@ An AI-powered internship recommendation platform achieving **personalized matchi
 
 ## 🚀 Try It Now!
 The app is live on Streamlit—no installation needed!
-👉 **[Launch App](https://internai.streamlit.app/)**
+👉 **[Launch App](https://intern-ai.streamlit.app/)**
 
 ## 🛠 Tech Stack
 | Component | Technologies |
